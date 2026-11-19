@@ -253,6 +253,11 @@ def get_adapter(slot: ModelSlot) -> Adapter:
         return AnthropicAdapter(slot)
     if provider in ("google", "gemini"):
         return GoogleAdapter(slot)
-    if provider in ("openai", "deepseek") or "/" in slot.base_url:
+    if provider in ("openai", "deepseek", "mimo", "xiaomi") or "/" in slot.base_url:
+        if not slot.base_url:
+            raise ValueError(
+                f"provider {slot.provider} 需要 base_url（OpenAI 兼容端点），"
+                "请在 configs/models.yaml 填写"
+            )
         return OpenAICompatibleAdapter(slot)
     raise ValueError(f"未知 provider：{slot.provider}")

@@ -96,10 +96,10 @@ def test_fake_adapter_produces_valid_record_shape() -> None:
 
 
 @pytest.mark.parametrize("coder", ["a", "b"])
-def test_unbound_slot_refuses_to_run(coder: str, tmp_path: Path) -> None:
-    from meta_coding.coders.runner import run_coder
-    from meta_coding.config import ConfigError, load_config
+def test_unbound_slot_refuses_to_run(coder: str) -> None:
+    """未绑定 provider 的槽位不得静默跑起来。"""
+    from meta_coding.coders.adapters.base import get_adapter
+    from meta_coding.config import ModelSlot
 
-    cfg = load_config(REPO)
-    with pytest.raises((RuntimeError, ConfigError)):
-        run_coder(REPO, cfg, coder, limit=1)
+    with pytest.raises((ValueError, RuntimeError)):
+        get_adapter(ModelSlot(name=coder, provider="", family="", model=""))

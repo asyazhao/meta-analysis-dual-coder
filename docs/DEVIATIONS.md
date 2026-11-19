@@ -94,18 +94,12 @@
   `make sync` 会出现"测试过了但 CLI 还是旧行为"，已在 RUNBOOK 标注。
 - **状态**：生效中
 
-## DEV-009 裁决模型与 Coder A 同家族（DeepSeek）
+## DEV-009 裁决模型家族约束提供显式开关（尚未启用）
 
 - **日期**：2026-11-19
-- **指令**：用户指定 Coder A = DeepSeek、Coder B = MiMo、裁决 = DeepSeek。
-- **冲突**：`PROTOCOL.md` §2 与 `ModelsConfig.validate` 要求裁决者与 A、B 均不同家族。
-  同家族会让裁决者与 A 的错误相关：A 判对时更易被认同、判错时更易被复制，
-  **裁决准确率会被系统性高估**，且偏倚方向不可知。
-- **处置**：新增显式开关 `pipeline.allow_same_family_adjudicator`（默认 false → 直接报错）。
-  本批次置为 true，并把裁决模型从 `deepseek-chat` 换成同家族的 `deepseek-reasoner`，
-  以降低"完全同源"的程度（换模型 ≠ 换家族，只能减轻不能消除相关性）。
-- **披露义务**：论文 Methods 与局限性必须写明：裁决模型与 Coder A 属同一厂商/家族，
-  裁决准确性可能被高估；建议以人工队列结果作为对照。
-- **可逆性**：把开关改回 false 并把裁决换成第三方家族（如 Gemini）即可恢复协议原状，
-  无需改代码。
-- **状态**：生效中（待用户在 G2 复核是否接受该风险）
+- **背景**：有提议让裁决模型与 Coder A 同家族（DeepSeek）。协议要求三者不同家族，
+  同家族会让裁决者与 A 的错误相关，**裁决准确率被系统性高估**且偏倚方向不可知。
+- **处置**：新增 `pipeline.allow_same_family_adjudicator`，默认 `false`（同家族直接 ConfigError）。
+  当前**保持 false**；等 G2 绑定真实模型时再定。
+- **若将来启用**：必须同时把该偏差写进 Methods 与局限性，并以人工队列结果作对照。
+- **状态**：开关已实现，未启用

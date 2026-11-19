@@ -14,6 +14,6 @@ pipeline:
   # 顺序去耦：A/B 用不同种子打乱文章顺序，记录顺序用于检查顺序效应
   random_seed_a: 20260101
   random_seed_b: 20260202
-  # 用户 2026-11-19 指定裁决模型与 Coder A 同家族（DeepSeek），见 DEV-009。
-  # 该设置削弱裁决独立性，须在论文局限性中披露。
-  allow_same_family_adjudicator: true
+  # 若裁决模型与某编码员同家族，必须显式置 true 并在 docs/DEVIATIONS.md 留痕；
+  # 默认 false → 同家族会直接 ConfigError。绑定模型时再决定。
+  allow_same_family_adjudicator: false
