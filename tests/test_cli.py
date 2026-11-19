@@ -53,6 +53,10 @@ def test_init_reports_bad_config(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert "配置检查：未通过" in capsys.readouterr().err
 
 
-def test_verify_without_artifacts_is_ok(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["verify", "--all"]) == 0
+def test_verify_without_artifacts_is_ok(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # 用隔离的临时仓库，避免测试依赖真实仓库里是否已有 manifest
+    shutil.copytree(REPO / "configs", tmp_path / "configs")
+    assert main(["verify", "--all", "--repo", str(tmp_path)]) == 0
     assert "尚无 manifest" in capsys.readouterr().out
