@@ -148,6 +148,34 @@ def cmd_verify(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def cmd_intake(args: argparse.Namespace) -> int:
+    from .ingest.pipeline import run_intake
+
+    root = _root(args)
+    try:
+        cfg = load_config(root)
+    except ConfigError as exc:
+        print(f"配置错误：{exc}", file=sys.stderr)
+        return 2
+    if args.batch != cfg.pipeline.batch_id:
+        print(
+            f"批次不一致：命令行 --batch {args.batch} 与 configs/pipeline.yaml "
+            f"的 {cfg.pipeline.batch_id} 不符（input_dir 按批次配置）",
+            file=sys.stderr,
+        )
+        return 2
+
+    result = run_intake(root, cfg)
+    print(f"文件 {result.files} 个：文章 {result.articles}、补充材料 {result.supplements}、"
+          f"重复 {result.duplicates}")
+    print(f"扫描件 {result.scanned}、无 DOI {result.no_doi}、不可读 {result.unreadable}")
+    print(f"清单：{result.manifest_path.relative_to(root)}")
+    print(f"注册表：{result.registry_path.relative_to(root)}")
+    print(f"报告：{result.report_path.relative_to(root)}")
+    print(f"manifest：{result.manifest_json_path.relative_to(root)}")
+    return 0
+
+
 def _not_implemented(command: str) -> int:
     stage = STAGE_OF_COMMAND.get(command, 9)
     print(
@@ -167,6 +195,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "init":
         return cmd_init(args)
+    if args.command == "intake":
+        return cmd_intake(args)
     if args.command == "verify":
         return cmd_verify(args)
     return _not_implemented(args.command)

@@ -31,10 +31,10 @@ def test_every_subcommand_has_help() -> None:
 
 
 def test_unimplemented_command_fails_loudly(capsys: pytest.CaptureFixture[str]) -> None:
-    code = main(["intake", "--batch", "batch01"])
+    code = main(["ingest", "--batch", "batch01"])
     assert code == 2
     err = capsys.readouterr().err
-    assert "Stage 01" in err
+    assert "Stage 03" in err
     assert "尚未实现" in err
 
 
