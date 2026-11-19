@@ -54,7 +54,7 @@ def load_packet(root: Path, article_key: str) -> dict[str, Any]:
 
 def render_for(root: Path, article_key: str, rules_text: str, rules_hash: str) -> RenderedPrompt:
     packet = load_packet(root, article_key)
-    schema = root / "rules" / "schema" / "record.schema.json"
+    schema = root / "rules" / "schema" / "coder_output.schema.json"
     return render_coder(packet, rules_text, rules_hash, schema)
 
 

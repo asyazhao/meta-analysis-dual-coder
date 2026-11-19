@@ -21,6 +21,7 @@ from .template import generate
 SCHEMA_DIR = "schema"
 RECORD_SCHEMA = "record.schema.json"
 ADJUDICATION_SCHEMA = "adjudication.schema.json"
+CODER_OUTPUT_SCHEMA = "coder_output.schema.json"
 
 TYPE_MAP: dict[str, dict[str, Any]] = {
     "string": {"type": "string"},
@@ -127,6 +128,48 @@ def build_record_schema(fields_doc: dict[str, Any]) -> dict[str, Any]:
 ERROR_CODE_SCHEMA: dict[str, Any] = {"enum": [f"E{i:02d}" for i in range(1, 13)]}
 
 
+def build_coder_output_schema(record_schema: dict[str, Any]) -> dict[str, Any]:
+    """一篇论文的输出信封：一篇可含多个块，因此是 record 数组而非单条。"""
+    record = {k: v for k, v in record_schema.items()
+              if k not in ("$schema", "$id", "title", "description")}
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://github.com/asyazhao/meta-analysis-dual-coder/coder_output.schema.json",
+        "title": "Coder output for one article",
+        "type": "object",
+        "required": ["article_key", "records"],
+        "additionalProperties": False,
+        "properties": {
+            "article_key": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+            "records": {"type": "array", "items": record},
+            "escalations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["reason"],
+                    "properties": {
+                        "reason": {"type": "string"},
+                        "pages": {"type": "array", "items": {"type": "integer"}},
+                        "detail": {"type": "string"},
+                    },
+                },
+            },
+            "article_status": {
+                "enum": [
+                    "coded",
+                    "missing_statistics",
+                    "not_eligible",
+                    "eligibility_unresolved",
+                    "source_unreadable",
+                    "source_incomplete",
+                    "overlap_unresolved",
+                ]
+            },
+            "notes": {"type": "string"},
+        },
+    }
+
+
 def build_adjudication_schema() -> dict[str, Any]:
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -209,9 +252,15 @@ def build(rules_dir: Path) -> BuildResult:
     schemas = rules_dir / SCHEMA_DIR
     schemas.mkdir(parents=True, exist_ok=True)
 
+    record_doc = build_record_schema(fields_doc)
     record_path = schemas / RECORD_SCHEMA
     record_path.write_text(
-        json.dumps(build_record_schema(fields_doc), ensure_ascii=False, indent=2) + "\n",
+        json.dumps(record_doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    coder_output_path = schemas / CODER_OUTPUT_SCHEMA
+    coder_output_path.write_text(
+        json.dumps(build_coder_output_schema(record_doc), ensure_ascii=False, indent=2)
+        + "\n",
         encoding="utf-8",
     )
     adjudication_path = schemas / ADJUDICATION_SCHEMA

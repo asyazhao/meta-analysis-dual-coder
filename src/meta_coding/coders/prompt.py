@@ -80,6 +80,8 @@ def _render_tables(packet: dict[str, Any]) -> str:
 
 def schema_text(schema_path: Path) -> str:
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    if "records" in schema.get("properties", {}):
+        schema = schema["properties"]["records"]["items"]
     props = schema["properties"]["fields"]["required"]
     pieces = []
     for name in props:
