@@ -1,0 +1,43 @@
+# 原始材料：一律不进 git
+*.pdf
+*.PDF
+data/00_inbox/
+data/02_ingest/
+data/03_coded/
+data/04_validation/
+data/05_adjudication/
+data/06_consensus/
+data/07_analysis/
+artifacts/private/
+
+# 凭据
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# 系统与编辑器
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# 大体积二进制
+*.pth
+*.mp4
+*.zip
+*.tar.gz
+
+# 保留目录占位
+!.gitkeep

@@ -1,0 +1,16 @@
+# 批次与成本护栏。G0 已确认：batch01 / 21 篇 / 50 USD / 并发 4。
+# 修改本文件会改变 config_hash，写入 DEVIATIONS.md 后再改。
+pipeline:
+  batch_id: batch01
+  input_dir: "/Users/zhaozhihe/Desktop/西浦大二/何老师lab/剩余未coding21篇"
+  repo_name: meta-analysis-dual-coder
+  repo_visibility: private
+  budget_usd: 50
+  concurrency: 4
+  agreement_audit_rate: 0.10
+  agreement_audit_min_cells: 100
+  max_retries: 2
+  pilot_n: 3
+  # 顺序去耦：A/B 用不同种子打乱文章顺序，记录顺序用于检查顺序效应
+  random_seed_a: 20260101
+  random_seed_b: 20260202

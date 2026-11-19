@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this pipeline, please cite it as below."
+title: "meta-analysis-dual-coder: dual-LLM independent coding and third-party adjudication for meta-analysis data extraction"
+abstract: >-
+  A reproducible pipeline that has two independent large language models code the same
+  corpus against a fixed coding manual, then adjudicates field-level disagreements with a
+  third model under blinding, including an audit of agreeing cells to estimate shared error.
+version: 0.1.0
+date-released: "2026-11-19"
+license: MIT
+type: software
+authors:
+  - family-names: Zhao
+    given-names: Zhihe
+    alias: asyazhao
+repository-code: "https://github.com/asyazhao"
+keywords:
+  - meta-analysis
+  - data extraction
+  - large language models
+  - inter-rater agreement
+  - weight bias internalization

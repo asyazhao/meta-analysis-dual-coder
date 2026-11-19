@@ -1,0 +1,30 @@
+# 三个模型槽位。provider/model/family 留空 = 未绑定，Stage 4 之前不阻塞。
+# 密钥只从环境变量读取，任何情况下不写进本文件、日志、manifest 或 git。
+# family 用于强制"A、B、裁决三者不同家族"这条硬约束；填厂商家族即可
+# （openai / anthropic / google / deepseek / ... 由实际厂商决定）。
+coder_a:
+  provider: ""
+  family: ""
+  model: ""
+  temperature: 0
+  max_output_tokens: 16000
+  api_key_env: META_CODER_A_API_KEY
+  base_url: ""
+
+coder_b:
+  provider: ""
+  family: ""
+  model: ""
+  temperature: 0
+  max_output_tokens: 16000
+  api_key_env: META_CODER_B_API_KEY
+  base_url: ""
+
+adjudicator:
+  provider: ""
+  family: ""
+  model: ""
+  temperature: 0
+  max_output_tokens: 16000
+  api_key_env: META_ADJUDICATOR_API_KEY
+  base_url: ""
