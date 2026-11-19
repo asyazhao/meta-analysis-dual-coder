@@ -230,6 +230,44 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_code(args: argparse.Namespace) -> int:
+    from .coders.runner import check_parity, run_coder
+
+    root = _root(args)
+    try:
+        cfg = load_config(root, require_bound_models=not args.dry_run)
+    except ConfigError as exc:
+        print(f"配置错误：{exc}", file=sys.stderr)
+        return 2
+    if args.batch != cfg.pipeline.batch_id:
+        print(f"批次不一致：--batch {args.batch} vs {cfg.pipeline.batch_id}", file=sys.stderr)
+        return 2
+
+    try:
+        parity = check_parity(root, cfg, args.limit)
+    except AssertionError as exc:
+        print(f"✗ 双编码员提示词不一致，已中止：{exc}", file=sys.stderr)
+        return 3
+
+    result = run_coder(
+        root, cfg, args.coder, limit=args.limit, dry_run=args.dry_run, max_cost=args.max_cost
+    )
+    tag = "DRY-RUN" if result.dry_run else "RUN"
+    print(f"[{tag}] coder_{result.coder}: 文章 {result.articles}，调用 {result.calls}，"
+          f"失败 {result.failures}，跳过已完成 {result.skipped_existing}")
+    print(f"提示词对齐：{parity['articles']} 篇，hash {parity['prompt_hash'][:24]}…（A==B）")
+    if result.dry_run:
+        total = sum(p.est_tokens for p in result.previews)
+        print(f"预估输入 token：{total:,}（按字符数/4 粗估，未调用任何 API）")
+        for item in result.previews:
+            print(f"  {item.source_file:<10} {item.sha256[:20]}… {item.est_tokens:>8,} tok")
+    else:
+        print(f"token：输入 {result.prompt_tokens:,} / 输出 {result.completion_tokens:,}；"
+              f"成本 {result.cost_usd:.4f} USD")
+        print(f"落盘：{result.run_dir.relative_to(root)}")
+    return 0 if result.failures == 0 else 1
+
+
 def _not_implemented(command: str) -> int:
     stage = STAGE_OF_COMMAND.get(command, 9)
     print(
@@ -255,6 +293,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_rules(args)
     if args.command == "ingest":
         return cmd_ingest(args)
+    if args.command == "code":
+        return cmd_code(args)
     if args.command == "verify":
         return cmd_verify(args)
     return _not_implemented(args.command)

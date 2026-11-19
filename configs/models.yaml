@@ -10,6 +10,9 @@ coder_a:
   max_output_tokens: 16000
   api_key_env: META_CODER_A_API_KEY
   base_url: ""
+  # 单价用于 --max-cost 护栏（USD / 1M tokens）；未填则拒绝按成本拦截
+  price_in: 0
+  price_out: 0
 
 coder_b:
   provider: ""
@@ -19,6 +22,8 @@ coder_b:
   max_output_tokens: 16000
   api_key_env: META_CODER_B_API_KEY
   base_url: ""
+  price_in: 0
+  price_out: 0
 
 adjudicator:
   provider: ""
@@ -28,3 +33,5 @@ adjudicator:
   max_output_tokens: 16000
   api_key_env: META_ADJUDICATOR_API_KEY
   base_url: ""
+  price_in: 0
+  price_out: 0

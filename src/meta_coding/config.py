@@ -68,6 +68,8 @@ class ModelSlot:
     max_output_tokens: int = 16000
     api_key_env: str = ""
     base_url: str = ""
+    price_in: float = 0.0      # USD / 1M prompt tokens
+    price_out: float = 0.0     # USD / 1M completion tokens
 
     @property
     def bound(self) -> bool:
@@ -183,6 +185,8 @@ def _slot(name: str, raw: dict[str, Any] | None) -> ModelSlot:
         max_output_tokens=int(raw.get("max_output_tokens", 16000)),
         api_key_env=str(raw.get("api_key_env") or ""),
         base_url=str(raw.get("base_url") or ""),
+        price_in=float(raw.get("price_in", 0.0)),
+        price_out=float(raw.get("price_out", 0.0)),
     )
 
 
