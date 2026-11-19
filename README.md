@@ -8,6 +8,10 @@
 
 不是某个课题的脚本——**规则文档是输入**：换一份规则，就换一个研究课题。
 
+> **产品页（在线）：https://asyazhao.github.io/meta-analysis-dual-coder/**
+>
+> 仓库：https://github.com/asyazhao/meta-analysis-dual-coder
+
 **[产品页](https://asyazhao.github.io/meta-analysis-dual-coder/)** · **[本机应用](#本机应用跑真活的地方)** · **[规则包契约](docs/RULE_PACK_SPEC.md)**
 
 ---
