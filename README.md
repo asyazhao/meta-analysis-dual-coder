@@ -128,7 +128,7 @@ src/meta_coding/
 ├── consensus/   共识工作簿、paper_id 编号
 ├── analysis/    分析长表、完整性矩阵
 └── web/         本机控制台（FastAPI + 原生 JS）
-site/            公共产品页（静态，GitHub Pages）
+docs/            协议文档 + 公共产品页（docs/index.html 由 Pages 发布）
 rules/           CODING_PLAN.md 只读副本 + 当前规则包实例
 docs/            协议、数据治理、错误分类、规则缺口、偏差记录
 artifacts/       每阶段 manifest（可离线复算）
@@ -169,7 +169,7 @@ pytest -q
 git ls-files | grep -E '\.pdf$|(^|/)\.env$'   # 必须无输出
 ```
 
-公共站点：Settings → Pages → Source `Deploy from a branch` → `main` / `/site`。
+公共站点：Settings → Pages → Source `Deploy from a branch` → `main` / `/docs`。
 
 提交身份已统一为 `asyazhao@users.noreply.github.com`。
 
