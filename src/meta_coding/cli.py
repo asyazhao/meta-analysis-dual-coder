@@ -610,6 +610,38 @@ def cmd_validate(args: argparse.Namespace) -> int:
                  and result.parse_errors == 0) else 1
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    from .report.render import ReportDataError, generate_reports
+
+    root = _root(args)
+    try:
+        cfg = load_config(root)
+    except ConfigError as exc:
+        print(f"配置错误：{exc}", file=sys.stderr)
+        return 2
+    if args.batch != cfg.pipeline.batch_id:
+        print(
+            f"批次不一致：--batch {args.batch} vs configs/pipeline.yaml 的 "
+            f"{cfg.pipeline.batch_id}",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        result = generate_reports(root, batch=args.batch, config=cfg)
+    except ReportDataError as exc:
+        print(f"报告未生成：{exc}", file=sys.stderr)
+        return 2
+
+    for line in result.summary():
+        print(line)
+    for check in result.checks:
+        if not check["ok"]:
+            print(f"  ✗ {check['id']}：{check['detail']}", file=sys.stderr)
+    print(f"manifest：{result.manifest_path.relative_to(root)}")
+    return 0 if all(check["ok"] for check in result.checks) else 1
+
+
 def _not_implemented(command: str) -> int:
     stage = STAGE_OF_COMMAND.get(command, 9)
     print(
@@ -645,6 +677,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_consensus(args)
     if args.command == "qa":
         return cmd_qa(args)
+    if args.command == "report":
+        return cmd_report(args)
     if args.command == "verify":
         return cmd_verify(args)
     return _not_implemented(args.command)
