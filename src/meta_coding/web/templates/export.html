@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}导出{% endblock %}
+{% block heading %}⑦ 导出：工作簿、分析长表、修改清单{% endblock %}
+{% block subheading %}
+只登记真实存在的文件；缺失项标灰，不会被补造。生成导出清单需要 G3 确认，
+清单里带每个文件的 SHA-256，方便交付时复核。
+{% endblock %}
+{% block actions %}
+{% if runs %}
+<form method="get" action="/export">
+  <select class="in" name="run" onchange="this.form.submit()" style="min-width:230px">
+    {% for item in runs %}
+    <option value="{{ item.run_id }}" {% if run and run.run_id == item.run_id %}selected{% endif %}>
+      {{ item.run_id }} · {{ item.badge }}
+    </option>
+    {% endfor %}
+  </select>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block main %}
+{% if not run %}
+<div class="card">
+  <div class="empty">
+    <strong>还没有可导出的运行</strong>
+    去 <a href="/run">运行</a> 页创建一次运行；产物会落在 <code>runs/&lt;id&gt;/</code> 下。
+  </div>
+</div>
+{% else %}
+<section class="card">
+  <div class="card-head">
+    <h2>交付概览</h2>
+    <span class="pill {{ 'ok' if run.status == 'done' else 'neutral' }}">{{ run.badge }}</span>
+  </div>
+  <div class="meta-list">
+    <div class="item"><div class="k">运行</div><div class="v">{{ run.run_id }}</div></div>
+    <div class="item"><div class="k">规则包</div><div class="v">{{ run.rulepack.id }}</div></div>
+    <div class="item"><div class="k">pack_hash</div><div class="v" title="{{ run.rulepack.pack_hash }}">{{ run.rulepack.pack_hash[:16] }}…</div></div>
+    <div class="item"><div class="k">成本</div><div class="v">{{ '%.4f'|format(run.cost_usd or 0) }} USD</div></div>
+  </div>
+
+  <div class="btn-row" style="margin-top:16px">
+    <button class="btn primary" id="make-manifest" {% if not gates.g3 %}disabled title="需要先确认 G3"{% endif %}>
+      生成导出清单
+    </button>
+    {% if not gates.g3 %}
+    <span class="tag">G3 未确认：点左下角 <code>G3 导出</code> 后可生成清单。</span>
+    {% elif manifest_exists %}
+    <a class="btn" href="/files/{{ manifest_rel }}">下载 export_manifest.json</a>
+    {% endif %}
+  </div>
+</section>
+
+{% for name, items in groups %}
+<section class="card flush">
+  <div class="card-head" style="padding:16px 20px 0;margin-bottom:12px">
+    <h2>{{ name }}</h2>
+    <span class="hint">{{ items|selectattr('exists')|list|length }}/{{ items|length }} 可用</span>
+  </div>
+  <div class="table-wrap" style="border:0;border-radius:0">
+    <table class="table">
+      <thead><tr><th>内容</th><th>路径</th><th>大小</th><th>生成时间</th><th>操作</th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.label }}</td>
+          <td class="mono-cell muted">{{ item.rel }}</td>
+          <td class="num">{{ item.size_text }}</td>
+          <td class="num">{{ item.mtime or '—' }}</td>
+          <td>
+            {% if item.exists %}
+            <a class="btn xs" href="/files/{{ item.rel }}">下载</a>
+            {% else %}
+            <span class="tag">未生成</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endfor %}
+
+<section class="card">
+  <div class="card-head"><h2>导出说明</h2></div>
+  <ul class="help" style="margin:0;padding-left:18px;line-height:1.8">
+    <li><strong>工作簿</strong>（<code>exports/&lt;pack_id&gt;_codebook.xlsx</code>）与 <strong>分析长表</strong>（<code>exports/analysis_long.csv</code>）由编码/共识阶段产出；本页只登记，不替代生成。</li>
+    <li><strong>修改意见</strong>（<code>advice/revisions.md</code>）是给研究者读的清单，采纳记录在 <code>advice/decisions.json</code> 与 <code>provenance.jsonl</code>。</li>
+    <li>下载接口只放开 <code>runs/</code>、<code>rulepacks/</code>、<code>reports/</code> 与 <code>data/07_analysis/</code>，且拒绝隐藏文件。</li>
+  </ul>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RUN_ID = {{ (run.run_id if run else '')|tojson }};
+
+const manifestBtn = $('#make-manifest');
+if (manifestBtn) {
+  manifestBtn.addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    busy(btn, true);
+    try {
+      const data = await api(`/api/runs/${encodeURIComponent(RUN_ID)}/export`, 'POST');
+      toast(`已生成导出清单：${data.entries} 个文件`);
+      window.location.reload();
+    } catch (err) {
+      toast(err.message, 'bad');
+      busy(btn, false);
+    }
+  });
+}
+</script>
+{% endblock %}

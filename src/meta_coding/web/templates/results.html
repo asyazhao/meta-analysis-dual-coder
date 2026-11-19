@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}结果{% endblock %}
+{% block heading %}⑤ 结果：A / B / 建议值三栏对照{% endblock %}
+{% block subheading %}
+每个字段一行：A 的取值、B 的取值、裁决建议值、依据页码与严重度。差异行高亮；
+点任意一行展开，看两方原文依据与裁决理由。
+{% endblock %}
+{% block actions %}
+{% if runs %}
+<form method="get" action="/results">
+  <select class="in" name="run" onchange="this.form.submit()" style="min-width:230px">
+    {% for item in runs %}
+    <option value="{{ item.run_id }}" {% if run and run.run_id == item.run_id %}selected{% endif %}>
+      {{ item.run_id }} · {{ item.badge }}
+    </option>
+    {% endfor %}
+  </select>
+</form>
+{% endif %}
+<a class="btn" href="/advice">修改意见 →</a>
+{% endblock %}
+
+{% block main %}
+{% if not run %}
+<div class="card">
+  <div class="empty">
+    <strong>还没有运行</strong>
+    去 <a href="/run">运行</a> 页创建一次运行并完成编码；结果会按 <code>runs/&lt;id&gt;/diff/cells.csv</code> 展示。
+  </div>
+</div>
+{% else %}
+<div class="kpi-grid">
+  <div class="kpi"><div class="v">{{ stats.papers }}</div><div class="k">论文</div></div>
+  <div class="kpi"><div class="v">{{ stats.cells }}</div><div class="k">字段格</div></div>
+  <div class="kpi warn"><div class="v">{{ stats.diff }}</div><div class="k">差异格</div></div>
+  <div class="kpi bad"><div class="v">{{ stats.critical }}</div><div class="k">critical</div></div>
+  <div class="kpi accent"><div class="v" style="font-size:13px">{{ run.rulepack.id }}</div><div class="k">规则包</div></div>
+</div>
+
+{% if not cells %}
+<div class="card">
+  <div class="empty">
+    <strong>这次运行还没有编码结果</strong>
+    先跑 <a href="/run?run={{ run.run_id }}">A 编码与 B 编码</a>，再点「生成比对」；这里会读 <code>runs/{{ run.run_id }}/diff/cells.csv</code>。
+  </div>
+</div>
+{% else %}
+<section class="card flush">
+  <div class="card-head" style="padding:16px 20px 0;margin-bottom:12px">
+    <h2>逐字段对照</h2>
+    <div class="btn-row">
+      <span class="tag">显示 <strong id="shown">{{ stats.cells }}</strong> / {{ stats.cells }} 格</span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:0 20px 12px">
+    <div class="btn-row" id="filters">
+      <button class="btn xs primary" data-filter="all">全部</button>
+      <button class="btn xs" data-filter="diff">仅差异</button>
+      <button class="btn xs" data-filter="critical">仅 critical</button>
+    </div>
+    <input class="in" id="search" placeholder="筛选论文 / 字段名…" style="max-width:280px;height:30px">
+    <span class="tag">点行展开原文与理由</span>
+  </div>
+
+  <div class="table-wrap" style="border:0;border-radius:0;max-height:calc(100vh - 300px)">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="min-width:170px">字段</th>
+          <th style="min-width:130px">A 值</th>
+          <th style="min-width:130px">B 值</th>
+          <th style="min-width:130px">建议值</th>
+          <th style="min-width:90px">依据页码</th>
+          <th style="min-width:90px">严重度</th>
+        </tr>
+      </thead>
+      {% set ns = namespace(group='', open=false) %}
+      {% for cell in cells %}
+      {% set group = cell.paper ~ ' · ' ~ cell.sheet ~ ' · ' ~ cell.block ~ ' · ' ~ (cell.sex if cell.sex is not none else '') %}
+      {% if group != ns.group %}
+        {% if ns.open %}</tbody>{% endif %}
+        <tbody class="group-block">
+          <tr class="group"><td colspan="6">{{ group }}</td></tr>
+        {% set ns.group = group %}
+        {% set ns.open = true %}
+      {% endif %}
+      <tr class="cell {% if cell.match_type != 'agree' %}diff{% endif %} {% if cell.severity == 'critical' %}critical{% endif %}"
+          data-diff="{{ '1' if cell.match_type != 'agree' else '0' }}"
+          data-sev="{{ cell.severity }}"
+          data-search="{{ (cell.paper ~ ' ' ~ cell.field ~ ' ' ~ cell.sheet)|lower }}"
+          title="点开看依据">
+        <td class="field">{{ cell.field }}</td>
+        <td class="val">{{ cell.coder_a if cell.coder_a is defined and cell.coder_a else '—' }}</td>
+        <td class="val">{{ cell.coder_b if cell.coder_b is defined and cell.coder_b else '—' }}</td>
+        <td class="val">{% if cell.suggestion %}<strong>{{ cell.suggestion }}</strong>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="num">{% if cell.page %}<span class="pill neutral">P{{ cell.page }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td>
+          {% if cell.severity == 'critical' %}<span class="pill bad">critical</span>
+          {% elif cell.severity %}<span class="pill warn">{{ cell.severity }}</span>
+          {% else %}<span class="muted">—</span>{% endif %}
+        </td>
+      </tr>
+      <tr class="detail" hidden>
+        <td colspan="6">
+          <div class="grid two">
+            <div>
+              <strong>A</strong> <span class="mono">{{ cell.coder_a if cell.coder_a else '—' }}</span>
+              {% if cell.page %}<span class="tag">· p.{{ cell.page }}</span>{% endif %}
+              {% if cell.quote %}<blockquote class="quote" style="margin:6px 0 0">「{{ cell.quote }}」</blockquote>{% endif %}
+            </div>
+            <div>
+              <strong>B</strong> <span class="mono">{{ cell.coder_b if cell.coder_b else '—' }}</span>
+              <div class="tag" style="margin-top:6px">比对类型：{{ cell.match_type }}</div>
+            </div>
+          </div>
+          {% if cell.rationale %}<p class="why" style="margin:8px 0 0"><strong>裁决理由：</strong>{{ cell.rationale }}</p>{% endif %}
+          {% if cell.confidence %}<span class="tag">置信度 {{ cell.confidence }}</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      {% if ns.open %}</tbody>{% endif %}
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+let filterMode = 'all';
+
+function applyFilters() {
+  const query = ($('#search') ? $('#search').value : '').trim().toLowerCase();
+  let shown = 0;
+  $$('tbody.group-block').forEach((body) => {
+    let visible = 0;
+    $$('tr.cell', body).forEach((row) => {
+      let keep = true;
+      if (filterMode === 'diff' && row.dataset.diff !== '1') keep = false;
+      if (filterMode === 'critical' && row.dataset.sev !== 'critical') keep = false;
+      if (query && !row.dataset.search.includes(query)) keep = false;
+      row.hidden = !keep;
+      const detail = row.nextElementSibling;
+      if (detail && detail.classList.contains('detail')) detail.hidden = true;
+      if (keep) visible += 1;
+    });
+    body.hidden = visible === 0;
+    shown += visible;
+  });
+  if ($('#shown')) $('#shown').textContent = String(shown);
+}
+
+$$('#filters [data-filter]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    filterMode = btn.dataset.filter;
+    $$('#filters [data-filter]').forEach((other) => {
+      other.classList.toggle('primary', other === btn);
+    });
+    applyFilters();
+  });
+});
+
+const search = $('#search');
+if (search) search.addEventListener('input', applyFilters);
+
+$$('tr.cell').forEach((row) => {
+  row.style.cursor = 'pointer';
+  row.addEventListener('click', () => {
+    const detail = row.nextElementSibling;
+    if (detail && detail.classList.contains('detail')) detail.hidden = !detail.hidden;
+  });
+});
+</script>
+{% endblock %}

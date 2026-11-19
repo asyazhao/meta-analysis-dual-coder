@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}密钥{% endblock %}
+{% block heading %}① 接入：密钥、预算与并发{% endblock %}
+{% block subheading %}
+三个模型各用一把独立密钥。密钥只写入仓库根的 <code>.env</code>（已被 git 忽略），
+页面只显示「已设置 / 未设置」，任何响应都不会回显明文。
+{% endblock %}
+{% block actions %}
+<a class="btn primary" href="/rules">下一步：规则文档 →</a>
+{% endblock %}
+
+{% block main %}
+{% if not keys %}
+<div class="banner warn">尚未读取到密钥配置；填写后即可进入规则解析。</div>
+{% endif %}
+
+<div class="split">
+  <section class="card">
+    <div class="card-head">
+      <h2>模型凭据</h2>
+      <span class="hint">写入 .env · 不回显</span>
+    </div>
+    <div class="grid">
+      {% for slot in slots %}
+      <div class="field">
+        <label for="key-{{ slot.name }}">
+          {{ slot.label }}
+          <span class="tag">· {{ slot.provider ~ '/' ~ slot.model if slot.bound else '槽位未绑定' }}</span>
+        </label>
+        <input class="in" id="key-{{ slot.name }}" type="password" autocomplete="new-password"
+               data-slot="{{ slot.name }}"
+               placeholder="{{ '已设置（留空则不修改）' if slot.set else '尚未设置，粘贴密钥' }}">
+        <div class="help">环境变量 <code>{{ slot.env }}</code> · 当前：{{ '已设置' if slot.set else '未设置' }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="grid two">
+      <div class="field">
+        <label for="budget">预算上限（USD）</label>
+        <input class="in" id="budget" type="number" min="0" max="100000" step="0.5"
+               value="{{ pipeline.budget_usd if pipeline else 30 }}">
+        <div class="help">累计估算成本触及上限就停，不「再跑一点看看」。</div>
+      </div>
+      <div class="field">
+        <label for="concurrency">并发数</label>
+        <input class="in" id="concurrency" type="number" min="1" max="32" step="1"
+               value="{{ pipeline.concurrency if pipeline else 4 }}">
+        <div class="help">同时处理的篇数；本机默认 4。</div>
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:16px">
+      <button class="btn primary" id="save-settings">保存设置</button>
+      <span class="tag" id="settings-state">
+        {% if config_hash %}当前 config_hash：<code title="{{ config_hash }}">{{ config_hash[:16] }}…</code>{% endif %}
+      </span>
+    </div>
+  </section>
+
+  <aside>
+    <section class="card">
+      <div class="card-head"><h2>模型槽位</h2><span class="hint">只读</span></div>
+      <table class="table">
+        <tbody>
+        {% for slot in slots %}
+          <tr>
+            <td>
+              <strong>{{ slot.label }}</strong><br>
+              <span class="tag">{{ slot.env }}</span>
+            </td>
+            <td>
+              {% if slot.bound %}
+              <span class="pill ok">已绑定</span><br>
+              <span class="tag">{{ slot.provider }} · {{ slot.family }}<br>{{ slot.model }}</span>
+              {% else %}
+              <span class="pill warn">未绑定</span><br>
+              <span class="tag">在 configs/models.yaml 填 provider / family / model</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <p class="help">密钥管「能不能调用」，槽位管「用哪个模型」。真实解析规则与编码前，至少绑定一个槽位。</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>安全边界</h2></div>
+      <ul class="help" style="margin:0;padding-left:16px;line-height:1.8">
+        <li>服务只监听 <code>127.0.0.1</code>，拒绝非回环地址。</li>
+        <li>密钥只写 <code>.env</code>；页面与 API 永不回显明文。</li>
+        <li>子进程日志在入队时脱敏，避免 stdout 泄漏。</li>
+        <li>目录浏览限定在仓库或当前论文目录内。</li>
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$('#save-settings').addEventListener('click', async (event) => {
+  const btn = event.currentTarget;
+  const keys = {};
+  $$('[data-slot]').forEach((input) => {
+    if (input.value.trim()) keys[input.dataset.slot] = input.value.trim();
+  });
+  busy(btn, true);
+  try {
+    const data = await api('/api/settings', 'POST', {
+      budget_usd: Number($('#budget').value || 0),
+      concurrency: Number($('#concurrency').value || 1),
+      keys,
+    });
+    $('#settings-state').innerHTML = '已保存 · config_hash：<code></code>';
+    $('#settings-state').querySelector('code').textContent = data.config_hash.slice(0, 16) + '…';
+    $$('[data-slot]').forEach((input) => {
+      if (data.keys_set[input.dataset.slot]) {
+        input.value = '';
+        input.placeholder = '已设置（留空则不修改）';
+      }
+    });
+    toast(data.written_keys.length
+      ? `已保存，写入 ${data.written_keys.length} 个密钥`
+      : '已保存预算与并发（未改动密钥）');
+  } catch (err) {
+    toast(err.message, 'bad');
+  } finally {
+    busy(btn, false);
+  }
+});
+</script>
+{% endblock %}

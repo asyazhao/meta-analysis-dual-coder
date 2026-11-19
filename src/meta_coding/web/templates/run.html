@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}运行{% endblock %}
+{% block heading %}④ 运行：摄取 → 双编码 → 比对 → 裁决{% endblock %}
+{% block subheading %}
+每一步都是可重跑、可中断的。真实调用受 G2 约束；未勾选 G2 时只允许 dry-run（不花钱、不写编码结果）。
+进度与成本来自落盘状态与 <code>run_log.jsonl</code>，不做估算。
+{% endblock %}
+{% block actions %}
+{% if runs %}
+<form method="get" action="/run">
+  <select class="in" name="run" onchange="this.form.submit()" style="min-width:220px">
+    {% for item in runs %}
+    <option value="{{ item.run_id }}" {% if run and run.run_id == item.run_id %}selected{% endif %}>
+      {{ item.run_id }} · {{ item.badge }}
+    </option>
+    {% endfor %}
+  </select>
+</form>
+{% endif %}
+<a class="btn" href="/results">查看结果 →</a>
+{% endblock %}
+
+{% block main %}
+{% if not gates.g2 %}
+<div class="banner warn">
+  <strong>G2 未确认</strong>：编码与裁决只能跑 dry-run。确认方法：点左下角 <code>G2 真实调用</code>。
+</div>
+{% endif %}
+
+{% if not run %}
+<section class="card">
+  <div class="card-head"><h2>创建一次运行</h2><span class="hint">运行绑定一个已确认的规则包</span></div>
+  {% if confirmed_packs %}
+  <div class="grid two">
+    <div class="field">
+      <label for="pack-select">规则包</label>
+      <select class="in" id="pack-select">
+        {% for item in confirmed_packs %}
+        <option value="{{ item.pack_id }}">{{ item.pack_id }} · {{ item.field_count }} 字段 · {{ item.pack_hash[:10] }}…</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label>&nbsp;</label>
+      <button class="btn primary" id="create-run" style="width:100%">创建运行</button>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty">
+    <strong>还没有已确认的规则包</strong>
+    规则包 <code>status=confirmed</code> 才允许进入编码。先去 <a href="/rules">规则</a> 页解析并确认。
+  </div>
+  {% endif %}
+</section>
+{% else %}
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="v mono" style="font-size:14px">{{ run.run_id }}</div><div class="k">运行编号</div></div>
+  <div class="kpi accent"><div class="v" style="font-size:14px">{{ run.rulepack.id }}</div><div class="k">规则包</div></div>
+  <div class="kpi"><div class="v" style="font-size:14px">{{ run.badge }}</div><div class="k">状态</div></div>
+  <div class="kpi warn"><div class="v" id="kpi-cost">{{ '%.4f'|format(run.cost_usd or 0) }}</div><div class="k">成本（USD）</div></div>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>四步流水线</h2>
+    <span class="hint">论文目录：<code>{{ run.papers_dir }}</code></span>
+  </div>
+  <div class="steps-grid">
+    {% for step in pipeline_steps %}
+    {% set st = (run.steps|selectattr('id','equalto',step.id)|list|first) %}
+    {% set status = st.status if st else 'idle' %}
+    <article class="stage {% if status == 'running' %}is-running{% elif status == 'done' %}is-done{% elif status == 'failed' %}is-failed{% endif %}"
+             data-stage="{{ step.id }}">
+      <h3><span class="n">{{ loop.index }}</span>{{ step.label }}
+        <span class="pill right {% if status == 'done' %}ok{% elif status == 'failed' %}bad{% elif status == 'running' %}info{% else %}neutral{% endif %}"
+              data-pill="{{ step.id }}">{{ status }}</span>
+      </h3>
+      <p>{{ step.detail }}</p>
+      <div class="do">
+        {% if step.id in ['code_a','code_b','adjudicate'] %}
+        <label class="vs"><input type="checkbox" data-dry="{{ step.id }}"> dry-run</label>
+        {% endif %}
+        <button class="btn primary" data-step="{{ step.id }}">
+          {% if step.id == 'diff' %}生成比对{% elif step.id == 'ingest' %}开始摄取{% else %}运行{% endif %}
+        </button>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>进度</h2>
+    <span class="hint" id="prog-source">来源：data/03_coded 落盘 + run_log.jsonl</span>
+  </div>
+  <div class="prog-row">
+    <span class="lab">A 编码</span>
+    <div class="progress"><span id="bar-a" style="width:{{ progress.percent.a if progress else 0 }}%"></span></div>
+    <span class="val" id="val-a">{{ progress.coded.a if progress else 0 }}/{{ progress.total if progress else 0 }}</span>
+  </div>
+  <div class="prog-row">
+    <span class="lab">B 编码</span>
+    <div class="progress alt"><span id="bar-b" style="width:{{ progress.percent.b if progress else 0 }}%"></span></div>
+    <span class="val" id="val-b">{{ progress.coded.b if progress else 0 }}/{{ progress.total if progress else 0 }}</span>
+  </div>
+  <div class="meta-list" style="margin-top:12px">
+    <div class="item"><div class="k">当前篇</div><div class="v" id="prog-current">{{ progress.current.paper if progress and progress.current.paper else '—' }}</div></div>
+    <div class="item"><div class="k">累计成本</div><div class="v" id="prog-cost">{{ '%.4f'|format(progress.cost_usd if progress else 0) }} USD</div></div>
+    <div class="item"><div class="k">活动任务</div><div class="v" id="prog-active">{{ (progress.active_jobs|length) if progress else 0 }}</div></div>
+  </div>
+</section>
+
+<details class="panel" id="log-panel">
+  <summary>运行详情（日志，实时追加）</summary>
+  <pre class="log" id="log">点上方步骤开始；日志只显示本页发起的任务与正在运行的任务。</pre>
+</details>
+
+<details class="panel">
+  <summary>再建一次运行</summary>
+  <div style="padding:0 14px 14px">
+    {% if confirmed_packs %}
+    <div class="upload">
+      <select class="in" id="pack-select" style="max-width:420px">
+        {% for item in confirmed_packs %}
+        <option value="{{ item.pack_id }}">{{ item.pack_id }} · {{ item.field_count }} 字段</option>
+        {% endfor %}
+      </select>
+      <button class="btn" id="create-run">创建</button>
+    </div>
+    <p class="help">新建运行不会覆盖旧运行；旧结果仍在 <code>runs/</code> 下。</p>
+    {% endif %}
+  </div>
+</details>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RUN_ID = {{ (run.run_id if run else '')|tojson }};
+
+function setStepPill(stepId, status) {
+  const pill = document.querySelector(`[data-pill="${stepId}"]`);
+  if (!pill) return;
+  pill.textContent = status;
+  pill.className = 'pill right ' + (
+    status === 'done' ? 'ok' : status === 'failed' ? 'bad' : status === 'running' ? 'info' : 'neutral'
+  );
+  const card = document.querySelector(`[data-stage="${stepId}"]`);
+  if (card) {
+    card.classList.toggle('is-running', status === 'running');
+    card.classList.toggle('is-done', status === 'done');
+    card.classList.toggle('is-failed', status === 'failed');
+  }
+}
+
+const createBtn = $('#create-run');
+if (createBtn) {
+  createBtn.addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    busy(btn, true);
+    try {
+      const data = await api('/api/runs', 'POST', {pack_id: $('#pack-select').value});
+      toast(`已创建运行 ${data.run.run_id}`);
+      window.location.href = data.redirect;
+    } catch (err) {
+      toast(err.message, 'bad');
+      busy(btn, false);
+    }
+  });
+}
+
+function logLine(text, stream) {
+  const box = $('#log');
+  if (!box) return;
+  const span = document.createElement('span');
+  if (stream === 'stderr') span.className = 'err';
+  else span.className = 'run';
+  span.textContent = text + '\n';
+  box.appendChild(span);
+  box.scrollTop = box.scrollHeight;
+}
+
+let logCursor = 0;
+let logJob = null;
+
+async function pollJob(jobId) {
+  logJob = jobId;
+  const panel = $('#log-panel');
+  if (panel) panel.open = true;
+  while (true) {
+    let data;
+    try {
+      data = await api(`/api/jobs/${encodeURIComponent(jobId)}?since=${logCursor}`);
+    } catch (err) {
+      logLine(err.message, 'stderr');
+      break;
+    }
+    data.lines.forEach((line) => logLine(line.text, line.stream));
+    logCursor = data.cursor;
+    if (data.status !== 'running') {
+      logLine(`[${data.status}] 退出码 ${data.returncode}`, data.status === 'succeeded' ? 'stdout' : 'stderr');
+      toast(data.status === 'succeeded' ? '任务完成' : '任务失败，见运行详情',
+        data.status === 'succeeded' ? 'ok' : 'bad');
+      refreshProgress();
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+  }
+}
+
+async function refreshProgress() {
+  if (!RUN_ID) return;
+  try {
+    const data = await api(`/api/runs/${encodeURIComponent(RUN_ID)}/progress`);
+    const barA = $('#bar-a'), barB = $('#bar-b');
+    if (barA) barA.style.width = `${data.percent.a}%`;
+    if (barB) barB.style.width = `${data.percent.b}%`;
+    if ($('#val-a')) $('#val-a').textContent = `${data.coded.a}/${data.total}`;
+    if ($('#val-b')) $('#val-b').textContent = `${data.coded.b}/${data.total}`;
+    if ($('#prog-current')) $('#prog-current').textContent = data.current.paper || '—';
+    if ($('#prog-cost')) $('#prog-cost').textContent = `${Number(data.cost_usd).toFixed(4)} USD`;
+    if ($('#prog-active')) $('#prog-active').textContent = data.active_jobs.length;
+    if ($('#kpi-cost')) $('#kpi-cost').textContent = Number(data.cost_usd).toFixed(4);
+    (data.steps || []).forEach((step) => setStepPill(step.id, step.status));
+  } catch (err) {
+    /* 静默：轮询失败不打断页面 */
+  }
+}
+
+$$('[data-step]').forEach((btn) => {
+  btn.addEventListener('click', async (event) => {
+    const step = btn.dataset.step;
+    const dry = document.querySelector(`[data-dry="${step}"]`);
+    const dryRun = !!(dry && dry.checked);
+    if (!RUN_ID) return;
+    busy(btn, true);
+    try {
+      const data = await api(`/api/runs/${encodeURIComponent(RUN_ID)}/steps/${encodeURIComponent(step)}`,
+        'POST', {dry_run: dryRun});
+      if (data.mode === 'inline') {
+        toast(`比对完成：${data.diff.diff} 处差异 / ${data.diff.cells} 格`);
+        setStepPill(step, 'done');
+        refreshProgress();
+      } else {
+        toast(`已启动${dryRun ? '（dry-run）' : ''}，日志见下方`);
+        logCursor = 0;
+        setStepPill(step, 'running');
+        pollJob(data.job_id);
+      }
+    } catch (err) {
+      toast(err.message, 'bad');
+    } finally {
+      busy(btn, false);
+    }
+  });
+});
+
+$$('[data-dry]').forEach((box) => {
+  const step = box.dataset.dry;
+  const btn = document.querySelector(`[data-step="${step}"]`);
+  box.addEventListener('change', () => {
+    if (btn) btn.textContent = box.checked ? '试跑' : '运行';
+  });
+});
+
+{% if progress and progress.active_jobs %}
+logCursor = 0;
+pollJob({{ progress.active_jobs[0].id|tojson }});
+{% elif RUN_ID %}
+refreshProgress();
+setInterval(refreshProgress, 2500);
+{% endif %}
+</script>
+{% endblock %}

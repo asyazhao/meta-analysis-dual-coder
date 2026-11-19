@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}论文{% endblock %}
+{% block heading %}③ 论文：目录或上传{% endblock %}
+{% block subheading %}
+选定一个 PDF 目录（或逐篇上传）。这里只负责「有哪些论文」，不会改动 PDF 内容；
+摄取后标题、页数与文本质量会写进 <code>data/01_manifest/corpus_manifest.csv</code>。
+{% endblock %}
+{% block actions %}
+<a class="btn" href="/run">下一步：运行 →</a>
+{% endblock %}
+
+{% block main %}
+<div class="kpi-grid">
+  <div class="kpi accent"><div class="v" id="kpi-pdfs">{{ pdfs|length }}</div><div class="k">目录中的 PDF</div></div>
+  <div class="kpi"><div class="v">{{ corpus_rows|length }}</div><div class="k">已摄取（清单条目）</div></div>
+  <div class="kpi"><div class="v" style="font-size:13px;word-break:break-all">{{ input_dir or '未设置' }}</div><div class="k">论文目录</div></div>
+</div>
+
+<div class="split">
+  <section class="card">
+    <div class="card-head">
+      <h2>论文目录</h2>
+      <span class="hint">路径会被写回 configs/pipeline.yaml</span>
+    </div>
+    <div class="field">
+      <label for="dir">目录路径</label>
+      <input class="in" id="dir" value="{{ input_dir }}" placeholder="/Users/you/papers">
+      <div class="help">允许仓库内或本机任意已存在的目录；后续浏览限定在这个目录内。</div>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn primary" id="use-dir">使用此目录</button>
+      <span class="tag" id="dir-state">{{ listing_error or '' }}</span>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="card-head"><h2>上传 PDF</h2><span class="hint">存进当前论文目录</span></div>
+    <div class="upload">
+      <input type="file" id="pdf-files" accept=".pdf" multiple>
+      <button class="btn" id="upload-btn">上传</button>
+    </div>
+    <div class="help">单文件上限 60 MB；同名文件会覆盖。上传后请重新点「使用此目录」刷新清单。</div>
+  </section>
+
+  <aside class="card">
+    <div class="card-head"><h2>摄取状态</h2></div>
+    {% if corpus_rows %}
+    <p class="help" style="margin-top:0">清单已生成；编码前应先跑「摄取」，把 PDF 转成带页码锚点的 packet。</p>
+    <div class="meta-list">
+      <div class="item"><div class="k">清单条目</div><div class="v">{{ corpus_rows|length }}</div></div>
+      <div class="item"><div class="k">扫描件</div><div class="v">{{ corpus_rows|selectattr('scanned','equalto','True')|list|length }}</div></div>
+    </div>
+    {% else %}
+    <div class="empty" style="padding:14px 4px">
+      <strong>还没有语料清单</strong>
+      先在 <a href="/run">运行</a> 页跑「摄取」，或在上一步确认规则包后直接开始。
+    </div>
+    {% endif %}
+  </aside>
+</div>
+
+<section class="card flush">
+  <div class="card-head" style="padding:16px 20px 0;margin-bottom:12px">
+    <h2>目录下的 PDF</h2>
+    <span class="hint" id="pdf-hint">{{ pdfs|length }} 个文件</span>
+  </div>
+  {% if pdfs %}
+  <div class="table-wrap" style="border:0;border-radius:0">
+    <table class="table">
+      <thead><tr><th>#</th><th>文件名</th><th>大小</th><th>修改时间</th></tr></thead>
+      <tbody>
+        {% for item in pdfs %}
+        <tr>
+          <td class="num">{{ loop.index }}</td>
+          <td>{{ item.name }}</td>
+          <td class="num">{{ item.size_text }}</td>
+          <td class="num">{{ item.mtime }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    <strong>目录里没有 PDF</strong>
+    {{ listing_error or '换一个目录，或在上面上传 PDF。' }}
+  </div>
+  {% endif %}
+</section>
+
+{% if corpus_rows %}
+<section class="card flush">
+  <div class="card-head" style="padding:16px 20px 0;margin-bottom:12px">
+    <h2>语料清单</h2>
+    <span class="hint">来自 data/01_manifest/corpus_manifest.csv</span>
+  </div>
+  <div class="table-wrap" style="border:0;border-radius:0">
+    <table class="table">
+      <thead><tr><th>文件</th><th>标题（自动识别）</th><th>年份</th><th>页数</th><th>文本</th><th>状态</th></tr></thead>
+      <tbody>
+        {% for row in corpus_rows %}
+        <tr>
+          <td class="mono">{{ row.source_file }}</td>
+          <td>{{ row.title }}</td>
+          <td class="num">{{ row.year }}</td>
+          <td class="num">{{ row.pages }}</td>
+          <td class="num">{{ row.scanned }}</td>
+          <td>
+            {% if row.status == 'ok' %}<span class="pill ok">可读</span>
+            {% elif 'citation' in row.status %}<span class="pill warn">需补引用</span>
+            {% else %}<span class="pill neutral">{{ row.status }}</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+$('#use-dir').addEventListener('click', async (event) => {
+  const btn = event.currentTarget;
+  const state = $('#dir-state');
+  busy(btn, true);
+  try {
+    const data = await api('/api/papers/dir', 'POST', {input_dir: $('#dir').value.trim()});
+    state.textContent = `已切换 · ${data.count} 个 PDF`;
+    $('#kpi-pdfs').textContent = data.count;
+    toast(`目录已切换，识别到 ${data.count} 个 PDF`);
+    window.location.reload();
+  } catch (err) {
+    state.textContent = '';
+    toast(err.message, 'bad');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+$('#upload-btn').addEventListener('click', async (event) => {
+  const files = $('#pdf-files').files;
+  if (!files.length) { toast('先选择 PDF', 'warn'); return; }
+  const form = new FormData();
+  Array.from(files).forEach((file) => form.append('files', file));
+  const btn = event.currentTarget;
+  busy(btn, true);
+  try {
+    const response = await fetch('/api/papers/upload', {method: 'POST', body: form});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || '上传失败');
+    toast(`已上传 ${data.saved.length} 个文件${data.rejected.length ? `，拒绝 ${data.rejected.length} 个` : ''}`);
+    window.location.reload();
+  } catch (err) {
+    toast(err.message, 'bad');
+  } finally {
+    busy(btn, false);
+  }
+});
+</script>
+{% endblock %}

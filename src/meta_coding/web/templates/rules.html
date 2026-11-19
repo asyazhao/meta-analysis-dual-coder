@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+{% block title %}规则{% endblock %}
+{% block heading %}② 规则：从文档到可审阅的规则包{% endblock %}
+{% block subheading %}
+选一份规则文档（md / pdf / docx），点「解析规则」生成字段清单。逐条核对名称、类型、取值与原文出处，
+确认后 <code>pack.json</code> 变为 <code>confirmed</code>，后续编码只认这个哈希。
+{% endblock %}
+{% block actions %}
+{% if pack %}<span class="pill {{ 'ok' if pack.confirmed else 'warn' }}">{{ pack.badge }}</span>{% endif %}
+<a class="btn" href="/papers">下一步：论文 →</a>
+{% endblock %}
+
+{% block main %}
+<div class="split split-wide">
+  <section class="card">
+    <div class="card-head">
+      <h2>规则文档</h2>
+      <span class="hint">解析 = 一次模型调用（或离线 mock）</span>
+    </div>
+
+    <div class="grid two">
+      <div class="field">
+        <label for="doc-choice">仓库内已有文档</label>
+        <select class="in" id="doc-choice">
+          {% for item in choices %}
+          <option value="{{ item.path }}">{{ item.name }}{% if item.origin == 'papers' %}（论文目录）{% endif %}</option>
+          {% endfor %}
+          {% if not choices %}<option value="">（docs/ 与 rules/ 下没有可读文档）</option>{% endif %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="mode">解析方式</label>
+        <select class="in" id="mode">
+          <option value="mock">离线示例（mock，无需密钥）</option>
+          <option value="model">模型解析（需已绑定槽位）</option>
+        </select>
+        <div class="help">真实解析与 mock 走同一个接口，产出同一种规则包。</div>
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:12px">
+      <label for="doc-path">文档路径（可粘贴仓库内或论文目录内的路径）</label>
+      <input class="in" id="doc-path" value="{{ default_doc }}" placeholder="rules/CODING_PLAN.md">
+    </div>
+
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn primary" id="parse-btn">解析规则</button>
+      <span class="tag" id="parse-state"></span>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="upload">
+      <input type="file" id="doc-file" accept=".md,.markdown,.txt,.pdf,.docx">
+      <button class="btn" id="upload-btn">上传并解析</button>
+      {% if builtin_exists %}
+      <button class="btn ghost right" id="import-btn" title="把现有 rules/ 冻结成一个规则包草稿">
+        导入现有 rules/
+      </button>
+      {% endif %}
+    </div>
+    <div class="help">上传的文档存到 <code>rulepacks/_sources/</code>，不会覆盖仓库里的原规则。</div>
+  </section>
+
+  <aside class="card">
+    <div class="card-head"><h2>规则包</h2><span class="hint">{{ snapshot.packs_confirmed }}/{{ snapshot.packs }} 已确认</span></div>
+    {% if packs %}
+    <div class="grid" style="gap:9px">
+      {% for item in packs %}
+      <a class="stage {% if pack and pack.pack_id == item.pack_id %}is-running{% endif %}"
+         href="/rules?pack={{ item.pack_id }}" style="text-decoration:none;color:inherit">
+        <h3>
+          <span class="mono" style="font-size:12px">{{ item.pack_id }}</span>
+          <span class="pill {{ 'ok' if item.confirmed else 'neutral' }} right">{{ item.badge }}</span>
+        </h3>
+        <p>{{ item.field_count }} 字段 · {{ item.generated_model }}{% if item.mock %} · mock{% endif %}</p>
+        <span class="tag">{{ item.created_at }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty"><strong>还没有规则包</strong>先选一份规则文档解析，或导入现有 rules/。</div>
+    {% endif %}
+  </aside>
+</div>
+
+{% if pack %}
+<section class="card">
+  <div class="card-head">
+    <h2>字段清单 · <span class="mono">{{ pack.pack_id }}</span></h2>
+    <div class="btn-row">
+      <span class="pill {{ 'ok' if pack.confirmed else 'warn' }}">{{ pack.badge }}</span>
+      {% if pack.mock %}<span class="pill mock">离线示例</span>{% endif %}
+      <span class="tag">人工修改 {{ pack.human_edits }} 次</span>
+    </div>
+  </div>
+
+  <div class="meta-list" style="margin-bottom:14px">
+    <div class="item"><div class="k">来源文档</div><div class="v" title="{{ pack.source_path }}">{{ pack.source_path }}</div></div>
+    <div class="item"><div class="k">来源 SHA-256</div><div class="v" title="{{ pack.source_sha256 }}">{{ pack.source_sha256[:16] }}…</div></div>
+    <div class="item"><div class="k">生成模型</div><div class="v">{{ pack.generated_model }}</div></div>
+    <div class="item"><div class="k">pack_hash</div><div class="v" title="{{ pack.pack_hash }}">{{ pack.pack_hash[:16] }}…</div></div>
+  </div>
+
+  {% if pack.gaps %}
+  <div class="banner warn">
+    <strong>规则缺口 {{ pack.gaps|length }} 条</strong>（模型自己标出的不确定项，确认前请核对）：
+    <ul style="margin:6px 0 0;padding-left:18px">
+      {% for gap in pack.gaps %}<li>{{ gap }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="table-wrap">
+    <table class="table fields-table">
+      <thead>
+        <tr>
+          <th>列</th><th>字段名</th><th>类型</th><th>取值（逗号分隔）</th>
+          <th>缺失规则</th><th>章节</th><th>原文片段</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in fields %}
+        <tr data-name="{{ f.name }}">
+          <td class="col">{{ f.column }}</td>
+          <td><input class="in name" value="{{ f.name }}" {% if pack.confirmed %}disabled{% endif %}></td>
+          <td>
+            <select class="in type" {% if pack.confirmed %}disabled{% endif %}>
+              {% for t in type_choices %}
+              <option value="{{ t }}" {% if f.type == t %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><input class="in allowed" value="{{ f.allowed|join(', ') if f.allowed else '' }}"
+                     placeholder="{{ '仅 enum 必填' if f.type == 'enum' else '—' }}"
+                     {% if pack.confirmed %}disabled{% endif %}></td>
+          <td>
+            <select class="in missing" {% if pack.confirmed %}disabled{% endif %}>
+              {% for m in missing_choices %}
+              <option value="{{ m }}" {% if f.missing_policy == m %}selected{% endif %}>{{ m }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><input class="in chapter" value="{{ f.chapter }}" style="width:90px"
+                     {% if pack.confirmed %}disabled{% endif %}></td>
+          <td class="quote-cell">
+            <input class="in quote" value="{{ f.quote }}" {% if pack.confirmed %}disabled{% endif %}>
+          </td>
+          <td class="row-actions">
+            {% if not pack.confirmed %}
+            <button class="btn xs save">保存</button>
+            <button class="btn xs danger del">删除</button>
+            {% else %}
+            <span class="tag">已锁定</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if not pack.confirmed %}
+  <div class="card" style="margin-top:14px;box-shadow:none;background:#fbfbf4">
+    <div class="card-head"><h2>新增字段</h2><span class="hint">字段名小写字母开头 · 新增后自动重算列位</span></div>
+    <div class="grid three">
+      <div class="field"><label>字段名</label><input class="in add-name" placeholder="new_field"></div>
+      <div class="field"><label>类型</label>
+        <select class="in add-type">{% for t in type_choices %}<option value="{{ t }}">{{ t }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>取值（逗号分隔，enum 必填）</label><input class="in add-allowed" placeholder="1, 2, 3"></div>
+      <div class="field"><label>缺失规则</label>
+        <select class="in add-missing">{% for m in missing_choices %}<option value="{{ m }}">{{ m }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>章节</label><input class="in add-chapter" placeholder="§5.6"></div>
+      <div class="field"><label>原文片段</label><input class="in add-quote" placeholder="贴一句规则原文"></div>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn" id="add-field">新增字段</button>
+    </div>
+  </div>
+
+  <div class="btn-row" style="margin-top:16px">
+    <button class="btn primary" id="confirm-pack">确认规则包</button>
+    <span class="tag">确认后 pack_hash 固定，不可再改；要改就重新解析生成新版本。</span>
+  </div>
+  {% else %}
+  <div class="banner ok" style="margin:14px 0 0">
+    规则包已确认：<code>{{ pack.pack_hash }}</code>。现在可以去 <a href="/papers">论文</a> 或 <a href="/run">运行</a>。
+  </div>
+  {% endif %}
+</section>
+{% else %}
+<div class="card">
+  <div class="empty">
+    <strong>规则包是这套工具的唯一「课题配置」</strong>
+    选择文档后解析，就能得到字段表、Schema、列位契约与决策口径；换一份文档就是换一个课题。
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PACK_ID = {{ (pack.pack_id if pack else '')|tojson }};
+const CONFIRMED = {{ (pack.confirmed if pack else False)|tojson }};
+
+const choice = $('#doc-choice');
+if (choice) {
+  choice.addEventListener('change', () => { $('#doc-path').value = choice.value; });
+}
+
+async function parseDoc(payload, endpoint, stateEl, btn) {
+  busy(btn, true);
+  if (stateEl) stateEl.textContent = '解析中…';
+  try {
+    const data = await api(endpoint, 'POST', payload);
+    if (stateEl) stateEl.textContent = `已生成 ${data.pack.field_count} 个字段`;
+    toast(`规则包 ${data.pack.pack_id} 已生成（${data.pack.field_count} 字段）`);
+    window.location.href = data.redirect;
+  } catch (err) {
+    toast(err.message, 'bad');
+    if (stateEl) stateEl.textContent = '';
+  } finally {
+    busy(btn, false);
+  }
+}
+
+$('#parse-btn').addEventListener('click', (event) => {
+  parseDoc(
+    {doc_path: $('#doc-path').value.trim(), mode: $('#mode').value},
+    '/api/rules/parse', $('#parse-state'), event.currentTarget,
+  );
+});
+
+$('#upload-btn').addEventListener('click', async (event) => {
+  const file = $('#doc-file').files[0];
+  if (!file) { toast('先选一个规则文档', 'warn'); return; }
+  const form = new FormData();
+  form.append('file', file);
+  const btn = event.currentTarget;
+  busy(btn, true);
+  try {
+    const response = await fetch(`/api/rules/upload?mode=${encodeURIComponent($('#mode').value)}`, {
+      method: 'POST', body: form,
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || '上传失败');
+    toast(`已上传并生成规则包 ${data.pack.pack_id}`);
+    window.location.href = data.redirect;
+  } catch (err) {
+    toast(err.message, 'bad');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+const importBtn = $('#import-btn');
+if (importBtn) {
+  importBtn.addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    busy(btn, true);
+    try {
+      const data = await api('/api/rules/import', 'POST', {pack_id: 'meta-wbi-v1'});
+      toast('已导入内置规则包 meta-wbi-v1');
+      window.location.href = data.redirect;
+    } catch (err) {
+      toast(err.message, 'bad');
+    } finally {
+      busy(btn, false);
+    }
+  });
+}
+
+function rowPayload(tr) {
+  return {
+    name: tr.querySelector('.name').value.trim(),
+    type: tr.querySelector('.type').value,
+    allowed: tr.querySelector('.allowed').value,
+    missing_policy: tr.querySelector('.missing').value,
+    chapter: tr.querySelector('.chapter').value.trim(),
+    quote: tr.querySelector('.quote').value.trim(),
+  };
+}
+
+if (!CONFIRMED && PACK_ID) {
+  $$('tr[data-name]').forEach((tr) => {
+    const original = tr.dataset.name;
+    tr.querySelector('.save').addEventListener('click', async (event) => {
+      const btn = event.currentTarget;
+      busy(btn, true);
+      try {
+        await api(`/api/rules/${encodeURIComponent(PACK_ID)}/fields/${encodeURIComponent(original)}`,
+          'PATCH', rowPayload(tr));
+        toast('字段已保存，列位与 Schema 已重算');
+        window.location.reload();
+      } catch (err) {
+        toast(err.message, 'bad');
+        busy(btn, false);
+      }
+    });
+    tr.querySelector('.del').addEventListener('click', async (event) => {
+      if (!window.confirm(`删除字段 ${original}？`)) return;
+      const btn = event.currentTarget;
+      busy(btn, true);
+      try {
+        await api(`/api/rules/${encodeURIComponent(PACK_ID)}/fields/${encodeURIComponent(original)}`,
+          'DELETE');
+        toast('字段已删除');
+        window.location.reload();
+      } catch (err) {
+        toast(err.message, 'bad');
+        busy(btn, false);
+      }
+    });
+  });
+
+  $('#add-field').addEventListener('click', async (event) => {
+    const btn = event.currentTarget;
+    busy(btn, true);
+    try {
+      await api(`/api/rules/${encodeURIComponent(PACK_ID)}/fields`, 'POST', {
+        name: $('.add-name').value.trim(),
+        type: $('.add-type').value,
+        allowed: $('.add-allowed').value,
+        missing_policy: $('.add-missing').value,
+        chapter: $('.add-chapter').value.trim(),
+        quote: $('.add-quote').value.trim(),
+      });
+      toast('字段已新增');
+      window.location.reload();
+    } catch (err) {
+      toast(err.message, 'bad');
+      busy(btn, false);
+    }
+  });
+
+  $('#confirm-pack').addEventListener('click', async (event) => {
+    if (!window.confirm('确认规则包？确认后不可再修改，pack_hash 会写进后续 manifest。')) return;
+    const btn = event.currentTarget;
+    busy(btn, true);
+    try {
+      const data = await api(`/api/rules/${encodeURIComponent(PACK_ID)}/confirm`, 'POST');
+      toast(`已确认，pack_hash ${data.pack.pack_hash.slice(0, 16)}…`);
+      window.location.reload();
+    } catch (err) {
+      toast(err.message, 'bad');
+      busy(btn, false);
+    }
+  });
+}
+</script>
+{% endblock %}

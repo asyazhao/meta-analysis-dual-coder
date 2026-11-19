@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}修改意见{% endblock %}
+{% block heading %}⑥ 修改意见：逐条采纳或驳回{% endblock %}
+{% block subheading %}
+这里是 <code>runs/&lt;id&gt;/advice/revisions.md</code> 的结构化版本：哪篇、哪个字段、现值 → 建议值、依据页码。
+采纳或驳回都会写进该 run 的 <code>decisions.json</code>，并追加 <code>provenance.jsonl</code> 留痕。
+{% endblock %}
+{% block actions %}
+{% if runs %}
+<form method="get" action="/advice">
+  <select class="in" name="run" onchange="this.form.submit()" style="min-width:230px">
+    {% for item in runs %}
+    <option value="{{ item.run_id }}" {% if run and run.run_id == item.run_id %}selected{% endif %}>
+      {{ item.run_id }} · {{ item.badge }}
+    </option>
+    {% endfor %}
+  </select>
+</form>
+{% endif %}
+<a class="btn" href="/export">导出 →</a>
+{% endblock %}
+
+{% block main %}
+{% if not run %}
+<div class="card">
+  <div class="empty">
+    <strong>还没有运行</strong>
+    修改意见来自一次运行的裁决结果。去 <a href="/run">运行</a> 页创建并跑完编码与裁决。
+  </div>
+</div>
+{% else %}
+<div class="kpi-grid">
+  <div class="kpi"><div class="v">{{ stats.total }}</div><div class="k">意见总数</div></div>
+  <div class="kpi warn"><div class="v" id="kpi-pending">{{ stats.pending }}</div><div class="k">待处理</div></div>
+  <div class="kpi accent"><div class="v" id="kpi-accepted">{{ stats.accepted }}</div><div class="k">已采纳</div></div>
+  <div class="kpi"><div class="v" id="kpi-rejected">{{ stats.rejected }}</div><div class="k">已驳回</div></div>
+  <div class="kpi bad"><div class="v">{{ stats.critical }}</div><div class="k">critical</div></div>
+</div>
+
+{% if not items %}
+<div class="card">
+  <div class="empty">
+    <strong>还没有修改意见</strong>
+    需要 <code>runs/{{ run.run_id }}/advice/revisions.md</code>（或 <code>adjudication.jsonl</code>）。
+    先跑 <a href="/run?run={{ run.run_id }}">比对 / 裁决</a>；裁决产出后这里会自动结构化。
+  </div>
+</div>
+{% else %}
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+  <div class="btn-row" id="filters">
+    <button class="btn xs primary" data-filter="all">全部</button>
+    <button class="btn xs" data-filter="pending">待处理</button>
+    <button class="btn xs" data-filter="accepted">已采纳</button>
+    <button class="btn xs" data-filter="rejected">已驳回</button>
+    <button class="btn xs" data-filter="critical">仅 critical</button>
+  </div>
+  <input class="in" id="search" placeholder="筛选论文 / 字段…" style="max-width:260px;height:30px">
+</div>
+
+<div id="advice-list">
+  {% for item in items %}
+  <article class="advice {% if item.decision == 'accepted' %}is-accepted{% elif item.decision == 'rejected' %}is-rejected{% endif %}"
+           data-id="{{ item.id }}"
+           data-decision="{{ item.decision }}"
+           data-sev="{{ item.severity }}"
+           data-search="{{ (item.paper ~ ' ' ~ item.field ~ ' ' ~ item.sheet)|lower }}">
+    <header>
+      {% if item.severity == 'critical' %}<span class="pill bad">critical</span>
+      {% elif item.severity %}<span class="pill warn">{{ item.severity }}</span>
+      {% else %}<span class="pill neutral">建议</span>{% endif %}
+      <span class="where">{{ item.paper }} · {{ item.sheet }}{% if item.subsample %} · {{ item.subsample }}{% endif %}</span>
+      <code class="field">{{ item.field }}</code>
+      <span class="state pill {% if item.decision == 'accepted' %}ok{% elif item.decision == 'rejected' %}neutral{% else %}warn{% endif %}"
+            data-state>
+        {% if item.decision == 'accepted' %}已采纳{% elif item.decision == 'rejected' %}已驳回{% else %}待处理{% endif %}
+      </span>
+    </header>
+
+    <div class="compare">
+      <div class="box"><div class="k">A</div><div class="v">{{ item.coder_a or '—' }}</div></div>
+      <div class="box"><div class="k">B</div><div class="v">{{ item.coder_b or '—' }}</div></div>
+      <div class="box suggest"><div class="k">建议值</div><div class="v">{{ item.suggestion or '—' }}</div></div>
+      <div class="box"><div class="k">依据页码</div><div class="v">{% if item.page %}{% if item.table %}{{ item.table }} · {% endif %}P{{ item.page }}{% else %}—{% endif %}</div></div>
+      <div class="box"><div class="k">置信度</div><div class="v">{{ item.confidence or '—' }}</div></div>
+    </div>
+
+    {% if item.quote %}<blockquote>「{{ item.quote }}」</blockquote>{% endif %}
+    {% if item.rationale %}<p class="why"><strong>理由：</strong>{{ item.rationale }}</p>{% endif %}
+    {% if item.diff_type %}<span class="tag">比对类型：{{ item.diff_type }}</span>{% endif %}
+
+    <div class="decide">
+      <input class="in val" value="{{ item.decision_value or item.suggestion }}" placeholder="采纳后的取值">
+      <input class="in note" placeholder="备注（可选）">
+      <button class="btn primary accept">采纳</button>
+      <button class="btn ghost reject">驳回</button>
+    </div>
+    <div class="tag" data-decision-line style="margin-top:6px">
+      {% if item.decision %}人工决定：{{ item.decision }}{% if item.decision_value %} · {{ item.decision_value }}{% endif %} · {{ item.decision_at }}{% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const RUN_ID = {{ (run.run_id if run else '')|tojson }};
+let filterMode = 'all';
+
+function applyFilters() {
+  const query = ($('#search') ? $('#search').value : '').trim().toLowerCase();
+  $$('.advice').forEach((card) => {
+    const decision = card.dataset.decision || '';
+    let keep = true;
+    if (filterMode === 'pending' && decision) keep = false;
+    if (filterMode === 'accepted' && decision !== 'accepted') keep = false;
+    if (filterMode === 'rejected' && decision !== 'rejected') keep = false;
+    if (filterMode === 'critical' && card.dataset.sev !== 'critical') keep = false;
+    if (query && !card.dataset.search.includes(query)) keep = false;
+    card.hidden = !keep;
+  });
+}
+
+$$('#filters [data-filter]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    filterMode = btn.dataset.filter;
+    $$('#filters [data-filter]').forEach((other) => {
+      other.classList.toggle('primary', other === btn);
+    });
+    applyFilters();
+  });
+});
+const search = $('#search');
+if (search) search.addEventListener('input', applyFilters);
+
+function paint(card, action, value, at) {
+  card.dataset.decision = action;
+  card.classList.toggle('is-accepted', action === 'accepted');
+  card.classList.toggle('is-rejected', action === 'rejected');
+  const state = card.querySelector('[data-state]');
+  state.textContent = action === 'accepted' ? '已采纳' : '已驳回';
+  state.className = 'state pill ' + (action === 'accepted' ? 'ok' : 'neutral');
+  const line = card.querySelector('[data-decision-line]');
+  line.textContent = `人工决定：${action}${value ? ' · ' + value : ''}${at ? ' · ' + at : ''}`;
+  const valueInput = card.querySelector('.val');
+  if (value) valueInput.value = value;
+}
+
+function bump(action) {
+  const map = {accepted: '#kpi-accepted', rejected: '#kpi-rejected'};
+  const target = $(map[action]);
+  if (target) target.textContent = String(Number(target.textContent || 0) + 1);
+  const pending = $('#kpi-pending');
+  if (pending) pending.textContent = String(Math.max(0, Number(pending.textContent || 0) - 1));
+}
+
+async function decide(card, action, btn) {
+  const itemId = card.dataset.id;
+  const value = card.querySelector('.val').value.trim();
+  const note = card.querySelector('.note').value.trim();
+  if (action === 'accept' && !value) {
+    toast('采纳前请填写或确认取值', 'warn');
+    return;
+  }
+  busy(btn, true);
+  try {
+    const data = await api('/api/advice/decision', 'POST', {
+      run_id: RUN_ID, item_id: itemId, action, value, note,
+    });
+    paint(card, data.item.decision, data.item.decision_value, data.item.decision_at);
+    bump(data.item.decision);
+    toast(action === 'accept' ? '已采纳，并写入 decisions + provenance' : '已驳回，已记录');
+    applyFilters();
+  } catch (err) {
+    toast(err.message, 'bad');
+  } finally {
+    busy(btn, false);
+  }
+}
+
+$$('.advice').forEach((card) => {
+  card.querySelector('.accept').addEventListener('click', (event) => {
+    decide(card, 'accept', event.currentTarget);
+  });
+  card.querySelector('.reject').addEventListener('click', (event) => {
+    decide(card, 'reject', event.currentTarget);
+  });
+});
+</script>
+{% endblock %}
