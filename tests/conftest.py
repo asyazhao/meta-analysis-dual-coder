@@ -312,7 +312,7 @@ def scenario(tmp_path: Path) -> Scenario:
     """两个编码员 + 裁决 + 人工修改的最小可复现场景。"""
     rules = tmp_path / "rules"
     rules.mkdir(parents=True, exist_ok=True)
-    for name in ("clean_codebook_BLANK.xlsx", "template_contract.json"):
+    for name in ("clean_codebook_BLANK.xlsx", "template_contract.json", "fields.yaml"):
         shutil.copy(REPO / "rules" / name, rules / name)
 
     # 编码员 A：标准方案

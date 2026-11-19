@@ -479,6 +479,93 @@ def cmd_qa(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_diff(args: argparse.Namespace) -> int:
+    from .adjudicate.diff import count_rows, run_diff
+
+    root = _root(args)
+    try:
+        cfg = load_config(root)
+    except ConfigError as exc:
+        print(f"配置错误：{exc}", file=sys.stderr)
+        return 2
+    if args.batch != cfg.pipeline.batch_id:
+        print(
+            f"批次不一致：--batch {args.batch} vs configs/pipeline.yaml 的 "
+            f"{cfg.pipeline.batch_id}",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        result = run_diff(root=root, batch=args.batch)
+    except FileNotFoundError as exc:
+        print(f"输入缺失：{exc}", file=sys.stderr)
+        return 2
+
+    for line in result.summary():
+        print(line)
+    print(f"逐格比对：{_rel(root, result.diff_cells_path)}（{len(result.cells)} 行）")
+    print(f"实质分歧：{_rel(root, result.disagreements_path)}"
+          f"（{len(result.disagreements)} 行）")
+    print(f"块对齐审计：{_rel(root, result.blocks_path)}"
+          f"（{len(result.alignment.pairs)} 行）")
+
+    checks = result.checks()
+    for name, expected, path in (
+        ("diff_cells", len(result.cells), result.diff_cells_path),
+        ("disagreements", len(result.disagreements), result.disagreements_path),
+        ("blocks", len(result.alignment.pairs), result.blocks_path),
+    ):
+        assert path is not None
+        actual = count_rows(path)
+        checks.append(
+            {
+                "id": f"csv_readback_{name}",
+                "ok": actual == expected,
+                "detail": f"{path.name} 读取 {actual} 行，期望 {expected} 行",
+            }
+        )
+
+    ok = all(check["ok"] for check in checks)
+    manifest = _write_stage_manifest(
+        root=root,
+        cfg=cfg,
+        stage="06_diff",
+        seed=f"06:{args.batch}:{len(result.cells)}:{len(result.disagreements)}",
+        inputs=result.inputs,
+        outputs=[
+            result.diff_cells_path,
+            result.disagreements_path,
+            result.blocks_path,
+        ],
+        counts={
+            "blocks_a": len(result.alignment.blocks_a),
+            "blocks_b": len(result.alignment.blocks_b),
+            "matched_blocks": len(result.alignment.matched),
+            "unmatched_a": sum(
+                1 for pair in result.alignment.unmatched if pair.a is not None
+            ),
+            "unmatched_b": sum(
+                1 for pair in result.alignment.unmatched if pair.b is not None
+            ),
+            "compared_cells": len(result.cells),
+            "both_absent_cells": result.both_absent,
+            "disagreements": len(result.disagreements),
+            "by_match_type": result.match_type_counts,
+            "by_category": result.category_counts,
+        },
+        checks=checks,
+        notes=(
+            "确定性比对：25 个内容字段（full_reference/paper_id/sex 由块对齐与 Stage 7 处理）；"
+            "块对齐按 sheet→论文身份→subsample 模糊匹配（禁止顺序 zip）；"
+            "容差 ±0.01；formatting_only 不进入裁决"
+        ),
+        status="complete" if ok else "failed",
+    )
+    print(f"manifest：{manifest.relative_to(root)}")
+    return 0 if ok else 1
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
     from .consensus.materialize import MaterializeError
     from .validate.records import run_validate
@@ -550,6 +637,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_ingest(args)
     if args.command == "code":
         return cmd_code(args)
+    if args.command == "diff":
+        return cmd_diff(args)
     if args.command == "validate":
         return cmd_validate(args)
     if args.command == "consensus":
