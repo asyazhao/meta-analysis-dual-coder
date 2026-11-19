@@ -1,37 +1,39 @@
-# 三个模型槽位。provider/model/family 留空 = 未绑定，Stage 4 之前不阻塞。
-# 密钥只从环境变量读取，任何情况下不写进本文件、日志、manifest 或 git。
-# family 用于强制"A、B、裁决三者不同家族"这条硬约束；填厂商家族即可
-# （openai / anthropic / google / deepseek / ... 由实际厂商决定）。
+# 三个模型槽位。密钥只从环境变量读取，不写进本文件、日志、manifest 或 git。
+# 用户 2026-11-19 指定：A=DeepSeek，B=MiMo，裁决=DeepSeek。
+# 裁决与 A 同家族 → 已用 allow_same_family_adjudicator 显式放行（DEV-009）。
 coder_a:
-  provider: ""
-  family: ""
-  model: ""
+  provider: deepseek
+  family: deepseek
+  model: deepseek-chat
   temperature: 0
   max_output_tokens: 16000
   api_key_env: META_CODER_A_API_KEY
-  base_url: ""
-  # 单价用于 --max-cost 护栏（USD / 1M tokens）；未填则拒绝按成本拦截
-  price_in: 0
-  price_out: 0
+  base_url: "https://api.deepseek.com/v1"
+  context_tokens: 64000
+  price_in_per_mtok: 0.27
+  price_out_per_mtok: 1.10
 
 coder_b:
-  provider: ""
-  family: ""
-  model: ""
+  provider: mimo
+  family: xiaomi
+  model: "mimo-7b-rl"          # 待确认：MiMo 实际服务端模型 ID
   temperature: 0
   max_output_tokens: 16000
   api_key_env: META_CODER_B_API_KEY
-  base_url: ""
-  price_in: 0
-  price_out: 0
+  base_url: ""                  # 待确认：MiMo 的 OpenAI 兼容端点
+  context_tokens: 64000
+  price_in_per_mtok: 0.0
+  price_out_per_mtok: 0.0
 
 adjudicator:
-  provider: ""
-  family: ""
-  model: ""
+  # 与 Coder A 同家族；用同家族内的另一个模型（reasoner）以降低完全同源风险
+  provider: deepseek
+  family: deepseek
+  model: deepseek-reasoner
   temperature: 0
   max_output_tokens: 16000
   api_key_env: META_ADJUDICATOR_API_KEY
-  base_url: ""
-  price_in: 0
-  price_out: 0
+  base_url: "https://api.deepseek.com/v1"
+  context_tokens: 64000
+  price_in_per_mtok: 0.55
+  price_out_per_mtok: 2.19

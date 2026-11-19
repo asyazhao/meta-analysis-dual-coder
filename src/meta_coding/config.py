@@ -68,6 +68,9 @@ class ModelSlot:
     max_output_tokens: int = 16000
     api_key_env: str = ""
     base_url: str = ""
+    context_tokens: int = 64000
+    price_in_per_mtok: float = 0.0
+    price_out_per_mtok: float = 0.0
     price_in: float = 0.0      # USD / 1M prompt tokens
     price_out: float = 0.0     # USD / 1M completion tokens
 
@@ -105,6 +108,8 @@ class PipelineConfig:
     pilot_n: int = 3
     random_seed_a: int = 20260101
     random_seed_b: int = 20260202
+    # 裁决模型与编码员同家族时，必须显式打开并记入 DEVIATIONS（默认拒绝）
+    allow_same_family_adjudicator: bool = False
 
     def validate(self) -> None:
         if not self.batch_id:
@@ -132,7 +137,7 @@ class ModelsConfig:
     def slots(self) -> tuple[ModelSlot, ...]:
         return (self.coder_a, self.coder_b, self.adjudicator)
 
-    def validate(self) -> None:
+    def validate(self, *, allow_same_family_adjudicator: bool = False) -> None:
         for slot in self.slots():
             if slot.bound and not slot.bound:  # pragma: no cover - defensive
                 raise ConfigError("unreachable")
@@ -143,11 +148,13 @@ class ModelsConfig:
             raise ConfigError(
                 f"编码员 A 与 B 必须来自不同模型家族（当前都是 {a.family}）"
             )
-        if adj.bound:
+        if adj.bound and not allow_same_family_adjudicator:
             for other in (a, b):
                 if other.bound and other.family == adj.family:
                     raise ConfigError(
-                        f"裁决模型与 {other.name} 同家族（{adj.family}），盲法失效"
+                        f"裁决模型与 {other.name} 同家族（{adj.family}），盲法失效；"
+                        "若确需如此，请在 pipeline.yaml 设 allow_same_family_adjudicator: true "
+                        "并在 docs/DEVIATIONS.md 留痕"
                     )
         if adj.bound and a.bound and b.bound:
             if adj.model == a.model or adj.model == b.model:
@@ -185,6 +192,7 @@ def _slot(name: str, raw: dict[str, Any] | None) -> ModelSlot:
         max_output_tokens=int(raw.get("max_output_tokens", 16000)),
         api_key_env=str(raw.get("api_key_env") or ""),
         base_url=str(raw.get("base_url") or ""),
+        context_tokens=int(raw.get("context_tokens", 64000)),
         price_in=float(raw.get("price_in", 0.0)),
         price_out=float(raw.get("price_out", 0.0)),
     )
@@ -219,7 +227,9 @@ def load_config(root: Path, *, require_bound_models: bool = False) -> Config:
         coder_b=_slot("coder_b", raw_models.get("coder_b")),
         adjudicator=_slot("adjudicator", raw_models.get("adjudicator")),
     )
-    models.validate()
+    models.validate(
+        allow_same_family_adjudicator=pipeline.allow_same_family_adjudicator
+    )
     if require_bound_models and not models.fully_bound:
         missing = [s.name for s in models.slots() if not s.bound]
         raise ConfigError(f"以下模型槽位尚未绑定 provider/model/family：{missing}")

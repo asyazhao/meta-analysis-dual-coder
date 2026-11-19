@@ -121,3 +121,26 @@ def test_rules_hash_read_from_lock(tmp_path: Path) -> None:
         json.dumps({"sha256": sha256_file(plan)}), encoding="utf-8"
     )
     assert load_config(root).rules_hash == sha256_file(plan)
+
+
+def test_adjudicator_same_family_rejected_by_default(tmp_path: Path) -> None:
+    models = {
+        "coder_a": bound("deepseek", "deepseek-chat", "A_KEY"),
+        "coder_b": bound("xiaomi", "mimo-7b-rl", "B_KEY"),
+        "adjudicator": bound("deepseek", "deepseek-reasoner", "C_KEY"),
+    }
+    root = write_repo(tmp_path, BASE_PIPELINE, models)
+    with pytest.raises(ConfigError, match="盲法失效"):
+        load_config(root)
+
+
+def test_adjudicator_same_family_allowed_with_explicit_switch(tmp_path: Path) -> None:
+    models = {
+        "coder_a": bound("deepseek", "deepseek-chat", "A_KEY"),
+        "coder_b": bound("xiaomi", "mimo-7b-rl", "B_KEY"),
+        "adjudicator": bound("deepseek", "deepseek-reasoner", "C_KEY"),
+    }
+    pipeline = dict(BASE_PIPELINE, allow_same_family_adjudicator=True)
+    root = write_repo(tmp_path, pipeline, models)
+    cfg = load_config(root)
+    assert cfg.models.adjudicator.family == "deepseek"
