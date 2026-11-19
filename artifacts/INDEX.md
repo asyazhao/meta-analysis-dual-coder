@@ -4,8 +4,12 @@
 
 | 阶段 | run_id | 产物 | 关键计数 | git tag | 验收 |
 |---|---|---|---|---|---|
-| stage-00 baseline | `20261119T153637Z-3ba4333` | 仓库骨架、配置、治理文档、CI、manifest | 45 文件 / 81,462 B | `stage-00` | 见下 |
-| stage-01 intake | `20261119T153858Z-bb38d28a` | `corpus_manifest.csv`、`registry.csv`、`intake_report.md` | 文件 21 / **文章 21** / 补充 0 / 重复 0；扫描 0；无 DOI 3 | `stage-01` | 通过 |
+| stage-00 baseline | `20261119T153945Z-57ff136` | 基线文档快照（README/LICENSE/CITATION/pyproject/Makefile/.env.example/.gitignore/PROTOCOL） | 8 文件 / 16,001 B | `stage-00` | 通过 |
+| stage-01 intake | `20261119T153935Z-bb38d28a` | `corpus_manifest.csv`、`registry.csv`、`intake_report.md` | 文件 21 / **文章 21** / 补充 0 / 重复 0；扫描 0；无 DOI 3 | `stage-01` | 通过 |
+
+> 注：两处 run 曾按「全仓库快照」冻结（`20261119T153637Z-3ba4333`、`…T153858Z`），
+> 因 Stage 1 修改源码导致 `verify` 误报。已按 DEV-005 改为只冻结该阶段产物/基线文档，
+> 旧快照移入 `artifacts/private/superseded/`（gitignored）。
 
 ## stage-01 验收记录
 

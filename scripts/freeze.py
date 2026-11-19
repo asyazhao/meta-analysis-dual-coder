@@ -43,20 +43,23 @@ def _git(root: Path, *args: str) -> str:
         return ""
 
 
-def collect(root: Path, stage_dir: Path) -> list[Path]:
+def collect(root: Path, stage_dir: Path, only: list[str] | None = None) -> list[Path]:
     files: list[Path] = []
-    for path in sorted(root.rglob("*")):
-        if not path.is_file():
-            continue
-        rel = path.relative_to(root)
-        if any(part in SKIP_DIRS for part in rel.parts):
-            continue
-        if path.suffix in SKIP_SUFFIXES:
-            continue
-        if stage_dir in path.parents:
-            continue
-        files.append(path)
-    return files
+    candidates = [root / p for p in only] if only else [root]
+    for base in candidates:
+        walker = [base] if base.is_file() else sorted(base.rglob("*"))
+        for path in walker:
+            if not path.is_file():
+                continue
+            rel = path.relative_to(root)
+            if any(part in SKIP_DIRS for part in rel.parts):
+                continue
+            if path.suffix in SKIP_SUFFIXES:
+                continue
+            if stage_dir in path.parents:
+                continue
+            files.append(path)
+    return sorted(set(files))
 
 
 def main() -> int:
@@ -66,13 +69,19 @@ def main() -> int:
     ap.add_argument("--label", default="")
     ap.add_argument("--notes", default="")
     ap.add_argument("--git-commit", default=None)
+    ap.add_argument(
+        "--path",
+        action="append",
+        default=None,
+        help="只冻结指定路径（可重复）。缺省=整个仓库树；阶段 manifest 应只覆盖该阶段产物。",
+    )
     args = ap.parse_args()
 
     root = repo_root(Path(__file__).resolve().parent)
     stage = args.stage if args.stage.startswith("stage-") else f"stage-{args.stage}"
     stage_dir = root / "artifacts" / stage / args.run_id
 
-    outputs = collect(root, stage_dir)
+    outputs = collect(root, stage_dir, args.path)
     if not outputs:
         print("没有可冻结的文件", file=sys.stderr)
         return 1
