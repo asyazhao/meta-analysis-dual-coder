@@ -7,7 +7,7 @@
 | stage-00 baseline | `20261119T154456Z-6b5e095` | 不变量快照：`docs/PROTOCOL.md`、`LICENSE` | 2 文件 / 7,019 B | `stage-00` | 通过 |
 | stage-01 intake | `20261119T153935Z-bb38d28a` | `corpus_manifest.csv`、`registry.csv`、`intake_report.md` | 文件 21 / **文章 21** / 补充 0 / 重复 0；扫描 0；无 DOI 3 | `stage-01` | 通过 |
 | stage-03 ingest | `20261119T155227Z-2312dddf` | `data/02_ingest/<id>/packet.json`×21、`pages.jsonl`、`tables/`、`ingest_qa.csv` | 21 篇 / 159 表 / 1,595,484 字符 / 3.6 MB | `stage-03` | 通过 |
-| stage-02 rules | `20261119T154452Z-6b5e095` | `fields.yaml`、`decisions.yaml`、两份 Schema、`template_contract.json`、`clean_codebook_BLANK.xlsx`、`rules.lock.json` | 28 字段 / 33 列 / 4 表；V01–V50；10 文件 / 92,648 B | `stage-02` | 通过（待 G1 签字） |
+| stage-02 rules | `20261119T164027Z-d358520` | `fields.yaml`、`decisions.yaml`、两份 Schema、`template_contract.json`、`clean_codebook_BLANK.xlsx`、`rules.lock.json` | 28 字段 / 33 列 / 4 表；V01–V50；10 文件 / 92,648 B | `stage-02` | 通过（待 G1 签字） |
 
 ## stage-03 验收记录
 

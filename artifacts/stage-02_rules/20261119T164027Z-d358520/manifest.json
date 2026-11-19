@@ -1,8 +1,8 @@
 {
   "stage": "stage-02_rules",
-  "run_id": "20261119T154452Z-6b5e095",
-  "created_at": "2026-11-19T15:44:52Z",
-  "git_commit": "6b5e09536369e613a0401ef6bc17688d57d1cae3",
+  "run_id": "20261119T164027Z-d358520",
+  "created_at": "2026-11-19T16:40:27Z",
+  "git_commit": "d358520294c9017ecbf33e2673afdea72c2852be",
   "rules_hash": null,
   "config_hash": null,
   "inputs": [],
@@ -14,18 +14,6 @@
       "rows": null
     },
     {
-      "path": "docs/G1_CHECKLIST.md",
-      "sha256": "c3c81c01350f3f68249feeee95f22736b50dfe479fbc4a44ddf0c42eaa53bb27",
-      "bytes": 4006,
-      "rows": null
-    },
-    {
-      "path": "docs/RULE_GAPS.md",
-      "sha256": "691c02b2ac54038bdf20295d87c9af840ed217799f9175e6ff7d7ea7d513fbf9",
-      "bytes": 4846,
-      "rows": null
-    },
-    {
       "path": "rules/CODING_PLAN.md",
       "sha256": "fa7c75005b97212efd38302faeb43bdfd5fdfde60c5175cef2e35c8bfc5921e4",
       "bytes": 53010,
@@ -33,8 +21,8 @@
     },
     {
       "path": "rules/clean_codebook_BLANK.xlsx",
-      "sha256": "481d0aea0a44586b678cc18b685663185bffe535b9a8f8a005ff991c7d604957",
-      "bytes": 8022,
+      "sha256": "c6164d5eb1d456e5ef910d517154cdf1f80dc3aeb4904778439043f7ea913229",
+      "bytes": 8021,
       "rows": null
     },
     {
@@ -56,6 +44,12 @@
       "rows": null
     },
     {
+      "path": "rules/schema/coder_output.schema.json",
+      "sha256": "63e4ff471c1b87f5a59d3627072d899f27c7c0f6b6288555dd6d79523177ce46",
+      "bytes": 8510,
+      "rows": null
+    },
+    {
       "path": "rules/schema/record.schema.json",
       "sha256": "a0b06bd301c37483777cd5882e53ab55e3d4157ffdbe54686fad08fddb3a5738",
       "bytes": 5832,
@@ -69,10 +63,10 @@
     }
   ],
   "counts": {
-    "files": 10,
-    "bytes": 92648
+    "files": 9,
+    "bytes": 92305
   },
   "checks": [],
   "status": "complete",
-  "notes": "28 字段 + 5 分隔列；V01–V50 全实现（auto 37/semi 13）；pytest 87 passed；rules verify 通过。规则源 sha256=fa7c7500…921e4。GAP-003/004/005 待 G1 裁定。"
+  "notes": "模板生成固定 openpyxl 元数据，重跑 sha256 一致；28 字段/33 列/4 表；V01–V50；167 tests。"
 }

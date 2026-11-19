@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from datetime import datetime
+
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -87,6 +89,14 @@ def _write_header(ws, headers: list[str]) -> None:
 
 def build_workbook(layout: Layout) -> Workbook:
     wb = Workbook()
+    # 固定元数据：否则 openpyxl 每次写入当前时间，同一份契约会生成不同字节，
+    # manifest 的 sha256 永远对不上（"相同配置重跑可解释"就无法成立）。
+    fixed = datetime(2026, 1, 1, 0, 0, 0)
+    wb.properties.created = fixed
+    wb.properties.modified = fixed
+    wb.properties.creator = "meta-coding"
+    wb.properties.lastModifiedBy = "meta-coding"
+    wb.properties.title = "clean_codebook_BLANK"
     wb.remove(wb.active)
 
     for sheet in SHEETS_MAIN:
