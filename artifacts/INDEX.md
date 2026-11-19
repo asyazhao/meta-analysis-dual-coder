@@ -5,6 +5,18 @@
 | 阶段 | run_id | 产物 | 关键计数 | git tag | 验收 |
 |---|---|---|---|---|---|
 | stage-00 baseline | `20261119T153637Z-3ba4333` | 仓库骨架、配置、治理文档、CI、manifest | 45 文件 / 81,462 B | `stage-00` | 见下 |
+| stage-01 intake | `20261119T153858Z-bb38d28a` | `corpus_manifest.csv`、`registry.csv`、`intake_report.md` | 文件 21 / **文章 21** / 补充 0 / 重复 0；扫描 0；无 DOI 3 | `stage-01` | 通过 |
+
+## stage-01 验收记录
+
+- 每 PDF 恰好一个角色；`21 + 0 + 0 = 21` 与文件总数一致
+- 重复项：0（本批次无重复副本）；`duplicate_of` 逻辑由 12 项单元测试覆盖
+- 扫描件：0 → OCR 队列为空（本机无 tesseract，若有扫描件将显式排队而非静默跳过）
+- DOI 覆盖 18/21；其余 3 篇为学位论文（6127 Sall 2023、6259 Wagner 2022、
+  7218 Pudney 2021），改用「规范化标题+第一作者+年份」生成 `article_key`，
+  状态 `ok_citation_key`，不依赖文件名或路径
+- `article_key` 唯一性：21/21
+- 本批次 **N = 21**（按文章计，非文件计）
 
 ## stage-00 验收记录
 
