@@ -1,0 +1,132 @@
+# 决策规则：分表去向、资格、样本拆分、基线、证据顺序、缺失追踪。
+# 每条都标注 CODING_PLAN.md 章节；不得解释出原文没有的分支。
+meta:
+  rules_sha256: "fa7c75005b97212efd38302faeb43bdfd5fdfde60c5175cef2e35c8bfc5921e4"
+
+routing:
+  # §3 分表决策：先判量表，再判均值/SD
+  order: [eligibility, scale_eligibility, target_timepoint, mean_availability]
+  sheets:
+    - id: WBIS
+      when: "eligible and measure_family == 'WBIS' and mean_available and sd_available"
+      structure: three_row_block
+    - id: WSSQ
+      when: "eligible and measure_family == 'WSSQ' and mean_available and sd_available"
+      structure: three_row_block
+    - id: no_mean_or_sd
+      when: "eligible and measure_family in {WBIS,WSSQ} and not mean_available"
+      missing_statistic: "mean if sd_available else mean_and_sd"
+      structure: one_row_per_article_measure_subsample
+    - id: not_eligible
+      when: "not eligible"
+      structure: one_row_per_article
+  same_article_both_measures: "WBIS 与 WSSQ 分别判断、分别入表，不是重复编码（§3）"
+
+eligibility:
+  include_when_all:
+    - "定量评估 weight bias internalization / internalized weight stigma"
+    - "实际施测已验证自评工具：WBIS、WBIS-M、WBIS-2F、WBIS 短版、合格跨文化版本，或 WSSQ"
+    - "文献类型为同行评审期刊文章、博士论文或硕士论文"
+    - "发表语言为英语"
+    - "有可报告或可计算的目报均值与 SD"
+  exclude_when_any:
+    - "未实际施测合格量表"
+    - "仅研究感知污名、歧视经历或公众态度等非内化构念"
+    - "目标变量为他评"
+    - "纯定性研究"
+    - "评论、社论或综述"
+    - "非英语文献"
+  unresolved_when:
+    - "量表是否合格/是否实际施测无法确认 → eligibility_unresolved"
+    - "正文损坏、扫描无法辨认、关键材料不可得 → source_unreadable / source_incomplete"
+    - "怀疑与另一报告重复、样本独立性无法确认 → overlap_unresolved"
+  chapter: "§2"
+
+sample_units:
+  split_when: "不同国家、临床人群、年龄人群、族裔或身份群体，确为独立总体且分别报告统计量（§4.2）"
+  merge_when: "同一总体的治疗组/控制组属基线划分 → 一个总体块 + pooled mean/SD（§4.2, §7.3）"
+  never:
+    - "为方便分析自行合并不同独立总体"
+    - "把性别行当成独立总体重复建块"
+    - "把三行块当作三个独立研究"
+  chapter: "§4.2"
+
+baseline:
+  rule: "干预/实验研究只取干预前 baseline；无干预纵向研究取首次测量"
+  verify: "不能仅因标为 T1/baseline 就认定合格；首次测量若已接受目标干预则不可用"
+  forbidden: ["干预中", "干预后", "随访", "变化值"]
+  chapter: "§4.2"
+
+sex_rows:
+  total: "总体行照常提取或可靠计算"
+  female_male: "仅当该性别组 mean 与 SD 均可获得且同一量表/样本/时间点/尺度时才编码"
+  otherwise: "只保留 sex 与最终 paper_id，其余留空；不填 -999、不追踪、不生成问题文本"
+  single_sex_sample: "该组即总体；总体行照常，另一性别行仅留 sex + paper_id"
+  chapter: "§4.1, §8"
+
+missing:
+  codes:
+    scale_mean_total_missing: -999
+    scale_sd_total_missing: -999
+    background_field_missing: -999
+    age_group_when_mean_missing: -999
+    real_zero: 0
+  never:
+    - "用 0 表示缺失"
+    - "把 -999 当作真实值参与任何计算"
+    - "在未编码性别行填 -999"
+  tracking:
+    unit: "论文 × 量表 × 独立子样本的总体（sex=0）"
+    missing_statistic_values: [mean, sd, mean_and_sd]
+    also_in_main_sheet_when: "有均值但缺 SD → 主表 scale_sd=-999 且追踪页 missing_statistic=sd"
+  chapter: "§8, §9"
+
+calculations:
+  total_to_item:
+    formula: "M_item = M_total / k ; SD_item = SD_total / k"
+    guard: "k 未知则不转换；mean 与 SD 必须同除同一个 k"
+    chapter: "§7.2"
+  reverse_item:
+    formula: "M_reversed = response_scale_min + response_scale_max - M_original"
+    guard: "仅对未反向的条目；已报告的正确全量表均值不得重复反转"
+    chapter: "§7.2"
+  pooled_two_groups:
+    mean: "(n1*M1 + n2*M2) / (n1+n2)"
+    sd: "sqrt(((n1-1)*SD1^2 + (n2-1)*SD2^2 + n1*(M1-M)^2 + n2*(M2-M)^2) / (N-1))"
+    chapter: "§7.3"
+  pooled_k_groups:
+    mean: "sum(n_i*M_i)/N"
+    sd: "sqrt((sum((n_i-1)*SD_i^2) + sum(n_i*(M_i-M)^2)) / (N-1))"
+    chapter: "§7.4"
+  rounding:
+    year_midpoint: "round half up（.5 向上取整）"
+    decimals: 2
+    tiny_values: "|x| <= 0.01 保留首个非零有效数字"
+    missing_code_display: "-999 不写成 -999.00"
+  chapter: "§7, §8"
+
+evidence_priority:
+  # §7.1：不按出现顺序、不按出现次数
+  steps:
+    1: "先确认是不是同一个统计量（样本/性别组/有效n/版本/baseline/全量表或子量表/总分或条目均分/未调整）"
+    2: "核查精度（3.5 vs 3.47 相容 → 用表中高精度）"
+    3: "正式更正（勘误/修订）优先于被更正原值"
+    4: "目标对应关系优先于载体（正文/表格/补充材料）"
+    5: "对象一致且无更正时，优先采用列明样本与统计标签的详细描述统计表"
+    6: "无详细表格时用 Results 正文，优先于摘要/讨论"
+    7: "同级仍冲突且无主次 → 字段填 -999，reason=conflicting_values，保留双值"
+  chapter: "§7.1"
+
+numbering:
+  when: "全部编码与复核完成后"
+  order: ["遍历 WBIS 首次出现", "遍历 WSSQ 接续", "同论文全部块/行共用", "每批次从 1 开始"]
+  check: "两表最大 paper_id == 两表不同论文数"
+  no_id_sheets: [no_mean_or_sd, not_eligible]
+  chapter: "§10.3"
+
+batch:
+  start_from_blank_copy: true
+  checkpoint_every: 50
+  continue_on_single_article_problem: true
+  stop_only_on_pipeline_failure: true
+  chapter: "§10.1, §10.2"

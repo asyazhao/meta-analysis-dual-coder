@@ -1,0 +1,224 @@
+# 28 个有效字段的机器可读定义。
+# 来源：CODING_PLAN.md（sha256 fa7c7500…921e4）§5、附录 A。
+# 本文件不得新增字段；类型/取值只是把原文条款翻译成可校验形式。
+# column 为派生的 clean_codebook_BLANK 中的列位（分隔列 F/K/O/T/V 不在此表）。
+
+meta:
+  rules_sha256: "fa7c75005b97212efd38302faeb43bdfd5fdfde60c5175cef2e35c8bfc5921e4"
+  field_count: 28
+  separator_columns: ["F", "K", "O", "T", "V"]
+  total_columns: 33
+
+fields:
+  - name: full_reference
+    column: A
+    type: string
+    missing_policy: never_missing_when_coded
+    required_when: "record_status in {coded, missing_statistics}"
+    chapter: "§5.1"
+    note: "APA 完整引用；不虚构 DOI。"
+
+  - name: subsample_label
+    column: B
+    type: string
+    missing_policy: never_missing
+    required_when: "always"
+    chapter: "§5.1, §4.1"
+    note: "单一合并样本填 Overall sample；独立子样本填具体英文名称。"
+
+  - name: source_type
+    column: C
+    type: enum
+    allowed: [1, 2, 3, 4]
+    labels: {1: journal_article, 2: dissertation, 3: thesis, 4: other}
+    missing_policy: missing_code
+    chapter: "§5.1"
+
+  - name: paper_id
+    column: D
+    type: integer
+    missing_policy: never_missing_when_coded
+    required_when: "consensus stage only"
+    chapter: "§5.1, §10.3"
+    note: "编码阶段为 null；共识阶段按 §10.3 统一分配。"
+
+  - name: sex
+    column: E
+    type: enum
+    allowed: [0, 1, 2]
+    labels: {0: total, 1: female, 2: male}
+    missing_policy: never_missing
+    required_when: "always"
+    chapter: "§4.1, §5.1"
+
+  - name: country
+    column: G
+    type: string
+    missing_policy: missing_code
+    normalization: {US: [USA, "U.S.", "United States", "United States of America"],
+                    UK: [UK, "U.K.", "United Kingdom"]}
+    chapter: "§5.2"
+
+  - name: sample_type
+    column: H
+    type: enum
+    allowed: [1, 2, 3, 4]
+    labels: {1: non_obese, 2: obese_nonclinical, 3: obese_clinical, 4: non_obese_clinical}
+    missing_policy: missing_code
+    chapter: "§6"
+
+  - name: clinical_type
+    column: I
+    type: string_or_null
+    missing_policy: null_when_not_applicable
+    required_when: "sample_type == 3"
+    chapter: "§5.2, §6"
+
+  - name: sampling_method
+    column: J
+    type: enum
+    allowed: [1, 2]
+    labels: {1: probability, 2: non_probability}
+    missing_policy: missing_code
+    chapter: "§5.2"
+
+  - name: publication_year
+    column: L
+    type: integer
+    range: [1900, 2035]
+    missing_policy: missing_code
+    chapter: "§5.3"
+    note: "首次在线发表年份，不是卷期年份。"
+
+  - name: year_data_collection
+    column: M
+    type: integer
+    range: [1900, 2035]
+    missing_policy: missing_code
+    chapter: "§5.3"
+    note: "区间取中点，.5 向上取整；未报告用 publication_year - 2。"
+
+  - name: year_imputed_rule
+    column: N
+    type: enum
+    allowed: [1, 2, 3]
+    labels: {1: reported, 2: midpoint_rounded, 3: publication_year_minus_2}
+    missing_policy: missing_code
+    chapter: "§5.3"
+
+  - name: sample_n
+    column: P
+    type: integer
+    minimum: 1
+    missing_policy: missing_code
+    chapter: "§5.4"
+    note: "与该行目标均值对应的有效人数。"
+
+  - name: mean_age
+    column: Q
+    type: number_or_missing
+    precision: 2
+    missing_policy: missing_code
+    chapter: "§5.4"
+
+  - name: age_calculation
+    column: R
+    type: string_or_null
+    missing_policy: null_when_no_calculation
+    chapter: "§5.4"
+
+  - name: age_group
+    column: S
+    type: enum_or_missing
+    allowed: [1, 2, 3, 4, -999]
+    labels: {1: "11<=a<=15", 2: "15<a<18", 3: "18<=a<=25", 4: "a>25"}
+    missing_policy: missing_code
+    chapter: "§5.4"
+
+  - name: mean_bmi
+    column: U
+    type: number_or_missing
+    precision: 2
+    missing_policy: missing_code
+    chapter: "§5.4"
+
+  - name: measure_name
+    column: W
+    type: string
+    missing_policy: never_missing_when_coded
+    chapter: "§5.5"
+    note: "WBIS / WBIS-M / WBIS-2F / WBIS_short_form / WSSQ；语言不混入名称。"
+
+  - name: translated_flag
+    column: X
+    type: enum
+    allowed: [1, 2]
+    labels: {1: yes_translated, 2: no_english}
+    missing_policy: missing_code
+    chapter: "§5.5"
+
+  - name: scale_comparable_flag
+    column: Y
+    type: enum
+    allowed: [1, 2, 3]
+    labels: {1: supported, 2: insufficient, 3: uncertain}
+    missing_policy: use_uncertain_value_3
+    chapter: "§5.5"
+    note: "口径存在规则缺口（RULE_GAPS GAP-003）；按 md 字面执行。"
+
+  - name: items_n
+    column: Z
+    type: integer
+    minimum: 1
+    missing_policy: missing_code
+    chapter: "§5.5"
+
+  - name: response_scale_min
+    column: AA
+    type: integer
+    missing_policy: missing_code
+    chapter: "§5.5"
+
+  - name: response_scale_max
+    column: AB
+    type: integer
+    missing_policy: missing_code
+    chapter: "§5.5"
+
+  - name: direction
+    column: AC
+    type: enum
+    allowed: [1, 2]
+    labels: {1: higher_is_more_internalization, 2: reverse}
+    missing_policy: missing_code
+    chapter: "§5.5"
+
+  - name: scale_total
+    column: AD
+    type: number_or_null
+    precision: 2
+    missing_policy: null_when_not_reported
+    chapter: "§5.6"
+    note: "仅当原文报告总分尺度时填写；不要求反推。"
+
+  - name: scale_mean
+    column: AE
+    type: number_or_missing
+    precision: 2
+    missing_policy: missing_code_total_row_only
+    chapter: "§5.6, §3"
+    note: "条目均分。性别行缺 mean 则不编码该行，不填 -999。"
+
+  - name: scale_sd
+    column: AF
+    type: number_or_missing
+    precision: 2
+    missing_policy: missing_code_total_row_only
+    chapter: "§5.6, §8"
+    note: "与 scale_mean 同尺度（同为条目均分）。"
+
+  - name: mean_calculation
+    column: AG
+    type: string_or_null
+    missing_policy: null_when_no_calculation
+    chapter: "§5.6"

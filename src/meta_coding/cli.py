@@ -176,6 +176,38 @@ def cmd_intake(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_rules(args: argparse.Namespace) -> int:
+    from .rules.build import build, verify_rules_lock
+    from .rules.contract import check_contract
+
+    root = _root(args)
+    rules_dir = root / "rules"
+
+    if args.action == "build":
+        result = build(rules_dir)
+        print(f"字段：{result.fields}")
+        print(f"Schema：{result.schema_path.relative_to(root)}")
+        print(f"Schema：{result.adjudication_path.relative_to(root)}")
+        print(f"契约：{result.contract_path.relative_to(root)}")
+        print(f"模板：{result.workbook_path.relative_to(root)}")
+        if result.problems:
+            for p in result.problems:
+                print(f"  ✗ {p}", file=sys.stderr)
+            return 1
+        print("规则锁与模板契约校验：通过")
+        return 0
+
+    problems = check_contract(rules_dir / "clean_codebook_BLANK.xlsx",
+                              rules_dir / "template_contract.json")
+    problems += verify_rules_lock(rules_dir)
+    if problems:
+        for p in problems:
+            print(f"✗ {p}", file=sys.stderr)
+        return 1
+    print("规则锁与模板契约校验：通过")
+    return 0
+
+
 def _not_implemented(command: str) -> int:
     stage = STAGE_OF_COMMAND.get(command, 9)
     print(
@@ -197,6 +229,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_init(args)
     if args.command == "intake":
         return cmd_intake(args)
+    if args.command == "rules":
+        return cmd_rules(args)
     if args.command == "verify":
         return cmd_verify(args)
     return _not_implemented(args.command)

@@ -1,0 +1,91 @@
+{
+  "derived_from": "CODING_PLAN.md",
+  "rules_sha256": "fa7c75005b97212efd38302faeb43bdfd5fdfde60c5175cef2e35c8bfc5921e4",
+  "generator": "src/meta_coding/rules/template.py",
+  "sheets": {
+    "main": [
+      "WBIS",
+      "WSSQ"
+    ],
+    "tracking": "no_mean_or_sd",
+    "excluded": "not_eligible",
+    "count": 4
+  },
+  "main": {
+    "header_row": 1,
+    "field_count": 28,
+    "headers": {
+      "A": "full_reference",
+      "B": "subsample_label",
+      "C": "source_type",
+      "D": "paper_id",
+      "E": "sex",
+      "G": "country",
+      "H": "sample_type",
+      "I": "clinical_type",
+      "J": "sampling_method",
+      "L": "publication_year",
+      "M": "year_data_collection",
+      "N": "year_imputed_rule",
+      "P": "sample_n",
+      "Q": "mean_age",
+      "R": "age_calculation",
+      "S": "age_group",
+      "U": "mean_bmi",
+      "W": "measure_name",
+      "X": "translated_flag",
+      "Y": "scale_comparable_flag",
+      "Z": "items_n",
+      "AA": "response_scale_min",
+      "AB": "response_scale_max",
+      "AC": "direction",
+      "AD": "scale_total",
+      "AE": "scale_mean",
+      "AF": "scale_sd",
+      "AG": "mean_calculation"
+    },
+    "separator_columns": [
+      "F",
+      "K",
+      "O",
+      "T",
+      "V"
+    ],
+    "total_columns": 33,
+    "block_rows": {
+      "sex_0": 2,
+      "sex_1": 3,
+      "sex_2": 4,
+      "blank_row_after": 5
+    },
+    "block_pattern": "每个编码块连续三行 sex=0,1,2，块后空一行；未编码性别行仅 sex 与 paper_id"
+  },
+  "tracking": {
+    "field_count": 10,
+    "headers": [
+      "paper_title",
+      "APA_reference",
+      "Mail",
+      "Author",
+      "CC_Mail",
+      "measure_name",
+      "subsample_label",
+      "sex",
+      "missing_statistic",
+      "notes"
+    ]
+  },
+  "excluded": {
+    "field_count": 2,
+    "headers": [
+      "full_reference",
+      "reason"
+    ]
+  },
+  "forbidden": [
+    "不得增删主表字段",
+    "不得改动分隔列位置",
+    "不得在 not_eligible 增加 paper_id",
+    "不得在 no_mean_or_sd 增加 paper_id"
+  ]
+}

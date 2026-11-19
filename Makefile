@@ -9,12 +9,14 @@ help:
 install: ## 建 venv 并安装可编辑包
 	python3 -m venv .venv
 	$(PIP) install -q -e ".[dev]"
-	# Python 3.13 的 site.py 会跳过名字以 _ 开头的 .pth 文件，而 setuptools
-	# 的可编辑安装正好叫 __editable__.*.pth，导致 `import meta_coding` 失败。
-	# 这里补一个普通名字的 .pth 指向 src/，仅影响本机 venv。
-	printf '%s\n' "$(CURDIR)/src" > .venv/lib/python*/site-packages/meta_coding_src.pth
-	# macOS 上若 venv 内的文件带 UF_HIDDEN 标志，Python 3.13 会跳过其 .pth。
-	-chflags -R nohidden .venv
+	# Python 3.13 会跳过带 macOS UF_HIDDEN 标志的 .pth（setuptools 的
+	# __editable__.meta_coding-*.pth 正好会被跳过），导致 import 失败。
+	# 用 .py 形式的 sitecustomize 兜底——site 按模块名导入，不看文件标志位。
+	printf '%s\n' \
+	  'import sys' \
+	  '_SRC = "$(CURDIR)/src"' \
+	  'if _SRC not in sys.path: sys.path.insert(0, _SRC)' \
+	  > .venv/lib/python*/site-packages/sitecustomize.py
 
 test: ## 跑全部测试
 	$(PY) -m pytest -q

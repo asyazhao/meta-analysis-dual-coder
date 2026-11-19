@@ -1,0 +1,8 @@
+{
+  "source_path": "~/Desktop/CODING_PLAN.md",
+  "copied_to": "rules/CODING_PLAN.md",
+  "sha256": "fa7c75005b97212efd38302faeb43bdfd5fdfde60c5175cef2e35c8bfc5921e4",
+  "bytes": 53010,
+  "locked_at": "2026-11-19",
+  "note": "只读副本。任何修改都会使 rules.lock.json 失效并触发全批次复算。"
+}
