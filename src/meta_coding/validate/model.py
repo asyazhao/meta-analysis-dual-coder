@@ -97,7 +97,18 @@ def _header_map(headers: list[Any]) -> dict[int, str]:
     return {i + 1: name for i, name in enumerate(headers) if name}
 
 
-def load_codebook(path: Path, contract_path: Path | None = None) -> Codebook:
+def load_codebook(
+    path: Path,
+    contract_path: Path | None = None,
+    *,
+    keep_sex_placeholders: bool = False,
+) -> Codebook:
+    """读取工作簿。
+
+    ``keep_sex_placeholders`` 打开时，整行只有 sex 的性别占位行会保留在三行块里。
+    Stage 5 物化产物在编码阶段 paper_id 留空，性别行本来就只剩 sex；校验器必须看到
+    这些结构行才能检查 [0,1,2] 序列。默认关闭，保持其他阶段原有的块视图。
+    """
     contract: dict[str, Any] = {}
     if contract_path and contract_path.is_file():
         contract = json.loads(contract_path.read_text(encoding="utf-8"))
@@ -131,7 +142,16 @@ def load_codebook(path: Path, contract_path: Path | None = None) -> Codebook:
                     if key != "sex"
                 )
                 if not has_data:
-                    current = None
+                    # sex 行即使整行只有 sex（编码阶段 paper_id 留空）也是块的结构行；
+                    # 只有显式要求保留占位行时才纳入块，否则维持其他阶段的旧块视图。
+                    if (
+                        keep_sex_placeholders
+                        and values.get("sex") in (1, 2)
+                        and current is not None
+                    ):
+                        current.rows.append(row)
+                    else:
+                        current = None
                     continue
                 if values.get("sex") == 0:
                     current = Block(sheet=sheet, start_row=r, rows=[row])

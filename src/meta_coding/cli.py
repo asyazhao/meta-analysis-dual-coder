@@ -96,10 +96,22 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("consensus", help="Stage 7 共识工作簿")
     _add_common(p)
     p.add_argument("--batch", required=True)
+    p.add_argument("--coder-a", type=Path, default=None, dest="coder_a",
+                   help="编码员 A 工作簿（默认在 data/03_coded/coder_a/ 下查找）")
+    p.add_argument("--coder-b", type=Path, default=None, dest="coder_b",
+                   help="编码员 B 工作簿（默认在 data/03_coded/coder_b/ 下查找）")
+    p.add_argument("--adjudication", type=Path, default=None,
+                   help="裁决记录 JSONL（默认 data/05_adjudication/）")
+    p.add_argument("--manual", type=Path, default=None,
+                   help="人工修改表 CSV（优先级最高）")
 
     p = sub.add_parser("qa", help="Stage 8 分析可用性 QA")
     _add_common(p)
     p.add_argument("--batch", required=True)
+    p.add_argument("--consensus", type=Path, default=None,
+                   help="共识工作簿（默认 data/06_consensus/<batch>_consensus_codebook.xlsx）")
+    p.add_argument("--out-dir", type=Path, default=None, dest="out_dir",
+                   help="导出目录（默认 data/07_analysis/）")
 
     p = sub.add_parser("report", help="Stage 9 报告生成")
     _add_common(p)
@@ -114,6 +126,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _root(args: argparse.Namespace) -> Path:
     return args.repo.resolve() if args.repo else repo_root()
+
+
+def _rel(root: Path, path: Path | None) -> str:
+    """报告里统一用仓库相对路径。"""
+    if path is None:
+        return "-"
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -268,6 +290,239 @@ def cmd_code(args: argparse.Namespace) -> int:
     return 0 if result.failures == 0 else 1
 
 
+def _write_stage_manifest(
+    *,
+    root: Path,
+    cfg,
+    stage: str,
+    seed: str,
+    inputs: list[Path],
+    outputs: list[Path],
+    counts: dict,
+    checks: list[dict],
+    notes: str = "",
+    status: str = "complete",
+) -> Path:
+    """按 RUNBOOK §5 写 stage manifest：输入/输出哈希 + checks + counts。"""
+    from .artifacts import build_manifest, git_head, make_run_id, write_manifest
+
+    manifest = build_manifest(
+        root=root,
+        stage=stage,
+        run_id=make_run_id(seed),
+        git_commit=git_head(root),
+        rules_hash=cfg.rules_hash,
+        config_hash=cfg.config_hash,
+        inputs=[path for path in inputs if path.is_file()],
+        outputs=outputs,
+        counts=counts,
+        checks=checks,
+        status=status,
+        notes=notes,
+    )
+    return write_manifest(root, stage, manifest)
+
+
+def cmd_consensus(args: argparse.Namespace) -> int:
+    from .consensus.build import build_consensus
+
+    root = _root(args)
+    try:
+        cfg = load_config(root)
+    except ConfigError as exc:
+        print(f"配置错误：{exc}", file=sys.stderr)
+        return 2
+    if args.batch != cfg.pipeline.batch_id:
+        print(
+            f"批次不一致：--batch {args.batch} vs configs/pipeline.yaml 的 "
+            f"{cfg.pipeline.batch_id}",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        result = build_consensus(
+            root=root,
+            batch=args.batch,
+            coder_a=args.coder_a,
+            coder_b=args.coder_b,
+            adjudication=args.adjudication,
+            manual=args.manual,
+        )
+    except FileNotFoundError as exc:
+        print(f"输入缺失：{exc}", file=sys.stderr)
+        return 2
+
+    for line in result.summary():
+        print(line)
+    for example in result.diff_examples:
+        print(f"  差异 {example}", file=sys.stderr)
+
+    manifest = _write_stage_manifest(
+        root=root,
+        cfg=cfg,
+        stage="07_consensus",
+        seed=f"07:{args.batch}:{result.cells}",
+        inputs=result.inputs,
+        outputs=[result.workbook, result.provenance, result.paper_id_map],
+        counts={
+            "papers": result.papers,
+            "blocks": result.blocks,
+            "rows": result.rows,
+            "cells": result.cells,
+            "pending_human": result.pending,
+            "by_source": result.by_source,
+            "writeback_diffs": result.writeback_diffs,
+        },
+        checks=[
+            {
+                "id": "paper_id_contiguous",
+                "ok": result.numbering_ok,
+                "detail": f"论文 {result.papers} 篇；最大 paper_id 等于不同论文数",
+            },
+            {
+                "id": "paper_id_assigned",
+                "ok": result.unidentified_blocks == 0,
+                "detail": f"无 full_reference 的块 {result.unidentified_blocks} 个",
+            },
+            {
+                "id": "writeback_readback",
+                "ok": result.writeback_diffs == 0,
+                "detail": f"差异 {result.writeback_diffs} 格",
+            },
+        ],
+        notes="取值优先级：人工 > 裁决 > A/B 一致 > pending_human",
+        status=(
+            "complete"
+            if result.writeback_diffs == 0
+            and result.numbering_ok
+            and result.unidentified_blocks == 0
+            else "failed"
+        ),
+    )
+    print(f"manifest：{manifest.relative_to(root)}")
+    ok = (
+        result.writeback_diffs == 0
+        and result.numbering_ok
+        and result.unidentified_blocks == 0
+    )
+    return 0 if ok else 1
+
+
+def cmd_qa(args: argparse.Namespace) -> int:
+    from .analysis.export import export_analysis
+
+    root = _root(args)
+    try:
+        cfg = load_config(root)
+    except ConfigError as exc:
+        print(f"配置错误：{exc}", file=sys.stderr)
+        return 2
+    if args.batch != cfg.pipeline.batch_id:
+        print(
+            f"批次不一致：--batch {args.batch} vs configs/pipeline.yaml 的 "
+            f"{cfg.pipeline.batch_id}",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        result = export_analysis(
+            root=root,
+            batch=args.batch,
+            consensus_path=args.consensus,
+            out_dir=args.out_dir,
+        )
+    except FileNotFoundError as exc:
+        print(f"输入缺失：{exc}", file=sys.stderr)
+        return 2
+
+    for line in result.summary():
+        print(line)
+
+    manifest = _write_stage_manifest(
+        root=root,
+        cfg=cfg,
+        stage="08_analysis",
+        seed=f"08:{args.batch}:{result.rows}",
+        inputs=result.inputs,
+        outputs=[
+            result.long_path,
+            result.dictionary_path,
+            result.completeness_path,
+            result.unresolved_path,
+        ],
+        counts={
+            "papers": result.papers,
+            "rows": result.rows,
+            "skipped_placeholder": result.skipped_placeholder,
+            "missing_cells": result.missing_cells,
+            "pending_cells": result.pending_cells,
+            "unresolved_entries": result.unresolved_entries,
+            "unusable_rows": result.unusable_rows,
+        },
+        checks=[
+            {
+                "id": "missing_code_removed",
+                "ok": result.missing_code_leaks == 0,
+                "detail": f"-999 泄漏 {result.missing_code_leaks} 格；应为 0",
+            },
+            {
+                "id": "placeholder_rows_skipped",
+                "ok": True,
+                "detail": f"跳过纯占位行 {result.skipped_placeholder} 行",
+            },
+        ],
+        status="complete" if result.missing_code_leaks == 0 else "failed",
+    )
+    print(f"manifest：{manifest.relative_to(root)}")
+    return 0
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    from .consensus.materialize import MaterializeError
+    from .validate.records import run_validate
+
+    root = _root(args)
+    try:
+        cfg = load_config(root)
+    except ConfigError as exc:
+        print(f"配置错误：{exc}", file=sys.stderr)
+        return 2
+    if args.batch != cfg.pipeline.batch_id:
+        print(f"批次不一致：--batch {args.batch} vs {cfg.pipeline.batch_id}", file=sys.stderr)
+        return 2
+
+    try:
+        result = run_validate(root, args.coder, args.batch, limit=args.limit)
+    except (FileNotFoundError, MaterializeError) as exc:
+        print(f"✗ {exc}", file=sys.stderr)
+        return 2
+
+    if result.articles == 0:
+        print(f"批次 {args.batch} 在语料清单里没有文章记录，无可校验对象。", file=sys.stderr)
+        return 1
+
+    print(f"[coder_{result.coder}] 文章 {result.articles}，有输出 {result.outputs}，"
+          f"缺输出 {result.missing_output}，解析失败 {result.parse_errors}，"
+          f"Schema 错误 {result.schema_errors}")
+    print(f"违规 {result.violation_total}（auto {result.auto_total} / "
+          f"semi {result.semi_total}）；待处理记录 {result.pending_total}")
+    if result.by_vid:
+        print("违规分布：" + "，".join(f"{vid}×{n}" for vid, n in result.by_vid.items()))
+    if result.workbook is not None:
+        blocks = "，".join(f"{sheet} {n}" for sheet, n in result.workbook_blocks.items())
+        print(f"物化工作簿：{_rel(root, result.workbook)}（{blocks} 块）")
+        if result.batch_violations:
+            detail = "，".join(f"{vid}×{n}" for vid, n in result.batch_violations.items())
+            print(f"整批复核：{sum(result.batch_violations.values())} 条（{detail}）")
+    print(f"逐篇报告：{_rel(root, result.out_dir)}/<article_id>.json")
+    print(f"回灌清单：{_rel(root, result.repair_log)}（{result.repair_articles} 篇）")
+    print(f"汇总：{_rel(root, result.summary_csv)}")
+    return 0 if (result.violation_total == 0 and result.missing_output == 0
+                 and result.parse_errors == 0) else 1
+
+
 def _not_implemented(command: str) -> int:
     stage = STAGE_OF_COMMAND.get(command, 9)
     print(
@@ -295,6 +550,12 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_ingest(args)
     if args.command == "code":
         return cmd_code(args)
+    if args.command == "validate":
+        return cmd_validate(args)
+    if args.command == "consensus":
+        return cmd_consensus(args)
+    if args.command == "qa":
+        return cmd_qa(args)
     if args.command == "verify":
         return cmd_verify(args)
     return _not_implemented(args.command)
