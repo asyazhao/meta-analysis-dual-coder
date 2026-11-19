@@ -1,0 +1,78 @@
+{
+  "stage": "stage-02_rules",
+  "run_id": "20261119T154452Z-6b5e095",
+  "created_at": "2026-11-19T15:44:52Z",
+  "git_commit": "6b5e09536369e613a0401ef6bc17688d57d1cae3",
+  "rules_hash": null,
+  "config_hash": null,
+  "inputs": [],
+  "outputs": [
+    {
+      "path": "configs/rules.lock.json",
+      "sha256": "b0f8050890033ea0ffba9aca1e261e31fc89e817660d1aaa8d1dd0765ae1106a",
+      "bytes": 314,
+      "rows": null
+    },
+    {
+      "path": "docs/G1_CHECKLIST.md",
+      "sha256": "c3c81c01350f3f68249feeee95f22736b50dfe479fbc4a44ddf0c42eaa53bb27",
+      "bytes": 4006,
+      "rows": null
+    },
+    {
+      "path": "docs/RULE_GAPS.md",
+      "sha256": "691c02b2ac54038bdf20295d87c9af840ed217799f9175e6ff7d7ea7d513fbf9",
+      "bytes": 4846,
+      "rows": null
+    },
+    {
+      "path": "rules/CODING_PLAN.md",
+      "sha256": "fa7c75005b97212efd38302faeb43bdfd5fdfde60c5175cef2e35c8bfc5921e4",
+      "bytes": 53010,
+      "rows": null
+    },
+    {
+      "path": "rules/clean_codebook_BLANK.xlsx",
+      "sha256": "481d0aea0a44586b678cc18b685663185bffe535b9a8f8a005ff991c7d604957",
+      "bytes": 8022,
+      "rows": null
+    },
+    {
+      "path": "rules/decisions.yaml",
+      "sha256": "fd4c66cbc48722f7c279e95b7f9fad60eed8ec3af5ec775c7000fd722fbbf822",
+      "bytes": 5884,
+      "rows": null
+    },
+    {
+      "path": "rules/fields.yaml",
+      "sha256": "cced3ed871e16f36c4ad07b9c6440531b2e4dac17bb0311f22d14c051c9643cd",
+      "bytes": 5882,
+      "rows": null
+    },
+    {
+      "path": "rules/schema/adjudication.schema.json",
+      "sha256": "d54c73988d2d7336e7028c4166203effc60855b0e303f8ff3852dd6c40776307",
+      "bytes": 2788,
+      "rows": null
+    },
+    {
+      "path": "rules/schema/record.schema.json",
+      "sha256": "a0b06bd301c37483777cd5882e53ab55e3d4157ffdbe54686fad08fddb3a5738",
+      "bytes": 5832,
+      "rows": null
+    },
+    {
+      "path": "rules/template_contract.json",
+      "sha256": "02546f5140a5a3ae6613764af76187bef2d9c0f6abf258ef2a72c39a2086c4f0",
+      "bytes": 2064,
+      "rows": null
+    }
+  ],
+  "counts": {
+    "files": 10,
+    "bytes": 92648
+  },
+  "checks": [],
+  "status": "complete",
+  "notes": "28 字段 + 5 分隔列；V01–V50 全实现（auto 37/semi 13）；pytest 87 passed；rules verify 通过。规则源 sha256=fa7c7500…921e4。GAP-003/004/005 待 G1 裁定。"
+}

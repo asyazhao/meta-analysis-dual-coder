@@ -49,9 +49,9 @@
 - **决定**：
   1. 阶段 manifest 只登记**该阶段的产物**（数据、报告、生成的配置），源码由 git tag 覆盖；
   2. `scripts/freeze.py` 增加 `--path`，默认行为不变但阶段冻结必须显式传路径；
-  3. stage-00 的 manifest 按治理/配置文档重新冻结（docs/、configs/、README、LICENSE、
-     CITATION.cff、pyproject.toml、Makefile、.env.example、.gitignore、.github/、scripts/），
-     原全仓库快照移入 `artifacts/private/superseded/`。
+  3. stage-00 的 manifest 只冻结**按设计不得静默变更**的两件：`docs/PROTOCOL.md`
+     （预注册方案）与 `LICENSE`；README/Makefile/pyproject/CITATION 属活文件，由 git tag 覆盖。
+     早先的全仓库快照移入 `artifacts/private/superseded/`。
 - **影响**：`verify` 从此只在"产物被改写"时报警，不再因后续阶段改代码而误报。
 - **状态**：生效中
 

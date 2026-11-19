@@ -4,8 +4,18 @@
 
 | 阶段 | run_id | 产物 | 关键计数 | git tag | 验收 |
 |---|---|---|---|---|---|
-| stage-00 baseline | `20261119T153945Z-57ff136` | 基线文档快照（README/LICENSE/CITATION/pyproject/Makefile/.env.example/.gitignore/PROTOCOL） | 8 文件 / 16,001 B | `stage-00` | 通过 |
+| stage-00 baseline | `20261119T154456Z-6b5e095` | 不变量快照：`docs/PROTOCOL.md`、`LICENSE` | 2 文件 / 7,019 B | `stage-00` | 通过 |
 | stage-01 intake | `20261119T153935Z-bb38d28a` | `corpus_manifest.csv`、`registry.csv`、`intake_report.md` | 文件 21 / **文章 21** / 补充 0 / 重复 0；扫描 0；无 DOI 3 | `stage-01` | 通过 |
+| stage-02 rules | `20261119T154452Z-6b5e095` | `fields.yaml`、`decisions.yaml`、两份 Schema、`template_contract.json`、`clean_codebook_BLANK.xlsx`、`rules.lock.json` | 28 字段 / 33 列 / 4 表；V01–V50；10 文件 / 92,648 B | `stage-02` | 通过（待 G1 签字） |
+
+## stage-02 验收记录
+
+- 28 个字段全部映射到列位；分隔列 F/K/O/T/V；四张工作表名称与列数符合 md
+- `record.schema.json` 由 `fields.yaml` 生成，`additionalProperties=false` + 28 个 required
+- V01–V50 全实现：auto 37、semi 13；每条一个「破坏→命中」用例
+- `pytest`：**87 passed**；`meta-coding rules verify` 通过
+- 规则锁：`rules/CODING_PLAN.md` sha256 与桌面原件一致，副本 chmod 444
+- 待办：G1 需确认 GAP-003/004/005 与派生模板列位
 
 > 注：两处 run 曾按「全仓库快照」冻结（`20261119T153637Z-3ba4333`、`…T153858Z`），
 > 因 Stage 1 修改源码导致 `verify` 误报。已按 DEV-005 改为只冻结该阶段产物/基线文档，
