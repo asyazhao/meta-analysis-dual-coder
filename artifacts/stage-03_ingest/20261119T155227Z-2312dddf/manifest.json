@@ -1,0 +1,175 @@
+{
+  "stage": "03_ingest",
+  "run_id": "20261119T155227Z-2312dddf",
+  "created_at": "2026-11-19T15:52:28Z",
+  "git_commit": "0b33611facdbb8c47e6db7f5e7dded762150ff86",
+  "rules_hash": "fa7c75005b97212efd38302faeb43bdfd5fdfde60c5175cef2e35c8bfc5921e4",
+  "config_hash": "85dcfebdd156122cfb1aedd14fe7f99081871cee26c8a60f2028dc1e52eb4112",
+  "inputs": [],
+  "outputs": [
+    {
+      "path": "data/02_ingest/7ff2c2a384bb6bbb/packet.json",
+      "sha256": "dc37212c4b98f74ecdbb184adf657ab474bd0cab8251d705ade479313e404d41",
+      "bytes": 56378,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/ef94f9c4ced66101/packet.json",
+      "sha256": "be620ff6d6b21cbb3f63377f35c51677a4943a487cc628bd92996c8ec7913faa",
+      "bytes": 255609,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/77d66bdf53b26bba/packet.json",
+      "sha256": "087f8fc06c8e3825dde721e58fab8a37ff40b19d32dcce0dc0ee8117a7c2d5f0",
+      "bytes": 279662,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/7f1911f53d37dd20/packet.json",
+      "sha256": "1da4c17aa0169b0c8024b5a50ec4bd1d7c41e85c0e4164612a14a4a88c85b35d",
+      "bytes": 48014,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/58851c21de1685aa/packet.json",
+      "sha256": "99eb8ba736fc72c628d847f48815afc4ad14cb7ae1a3fb8d4e789f9bb530b116",
+      "bytes": 224756,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/220d484889321f5e/packet.json",
+      "sha256": "2e8a6873a6ec7fe87b1fd2340b1389fbfb5f2a1a2c2e882b1915efd74d480464",
+      "bytes": 77810,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/d04b12d7ba029790/packet.json",
+      "sha256": "f58ab514eb06cc29dcfaaa9534954b11a9da8092c7593de6502cc6e82b221699",
+      "bytes": 40567,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/4a6a63d7ec783e86/packet.json",
+      "sha256": "25f5d20b506da463a45814a2d8417436dbd2b9beef8489f770d8da1ec74bbc21",
+      "bytes": 58120,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/e03320439d74e034/packet.json",
+      "sha256": "3ceaf91562453345bfd10558572dfecb4f7fc744ed65591a8ade9d927c74470a",
+      "bytes": 170004,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/14b0199615641775/packet.json",
+      "sha256": "ff0ca086e30c65434a85c078f7d7f06b976e3b739caa5c9e3eb07456f9219fe3",
+      "bytes": 35501,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/e08e0f6874827a9b/packet.json",
+      "sha256": "6b2284abec9ab5424eb7c291cf965d5b1b8b183da325358a8c07872c6b7a2ee0",
+      "bytes": 46403,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/a31522294050afb4/packet.json",
+      "sha256": "f60bec024e5011213d017a8a29b3c635eb2e30f8e1629af17ab7e3e871b2dcff",
+      "bytes": 63634,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/c69194e286fa14dc/packet.json",
+      "sha256": "7833f09e31d0a364f031eb68b3334ab9ac6c177438df46733e027cf6a2b5d11d",
+      "bytes": 63799,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/0ff0bf7ceeb500fb/packet.json",
+      "sha256": "b7147d31f1f77af63362687da1cf397b5cbb00eaafc814727469add8f2cdf935",
+      "bytes": 47615,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/efbba8f79bedeb8c/packet.json",
+      "sha256": "bab97b587d2743536435523c19f161a441247328ce0c482af98854b27b715be9",
+      "bytes": 82252,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/17c47e4256e21b73/packet.json",
+      "sha256": "285df6cd31eb9a9319413c6b5b62984e30e6c7a2de4d1bcb910434c5e380a3b5",
+      "bytes": 45125,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/f832b1dd16642539/packet.json",
+      "sha256": "9c1ef2ca83cfc029a709900ccd328b2f09a244f7e9a653117e69f232db5ec8ec",
+      "bytes": 55521,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/cc563670defe0170/packet.json",
+      "sha256": "d16787b02cf81aa09c33d072a5a4b0f8912c8711690feb3bfbb789d0ebe31fa2",
+      "bytes": 58466,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/820b3b7157cad7a6/packet.json",
+      "sha256": "2af27add0a54ed8f798b58b94ba99b0238f51d63faa821535b0a845f28b5bb70",
+      "bytes": 72064,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/41d86e06ef1a0181/packet.json",
+      "sha256": "2c5989a865fa1c61ac3036559f8c248aee0919e96fff61066b2a2ef0d3e955f0",
+      "bytes": 75084,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/2ad5d33ae1966cbc/packet.json",
+      "sha256": "3e63b7557bed22ef6a8f39b6d4fd25c63b9ca26c9c923d07570c47094d3b7773",
+      "bytes": 50657,
+      "rows": null,
+      "external": true
+    },
+    {
+      "path": "data/02_ingest/ingest_qa.csv",
+      "sha256": "515268ab007160ebd3c60ba9a2291c3681e70551ff71a2764a24e1ff8dcb1fa1",
+      "bytes": 3712,
+      "rows": null,
+      "external": true
+    }
+  ],
+  "counts": {
+    "articles": 21,
+    "packets": 21,
+    "total_chars": 1595484,
+    "total_tables": 159,
+    "scanned_articles": 3
+  },
+  "checks": [],
+  "status": "complete",
+  "notes": "input_dir=/Users/zhaozhihe/Desktop/西浦大二/何老师lab/剩余未coding21篇"
+}

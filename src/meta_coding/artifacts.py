@@ -47,17 +47,21 @@ def make_run_id(seed: str, when: datetime | None = None) -> str:
     return f"{stamp}-{short}"
 
 
-def _entry(root: Path, path: Path, *, rows: int | None = None) -> dict[str, Any]:
+def _entry(root: Path, path: Path, *, rows: int | None = None,
+           external: bool = False) -> dict[str, Any]:
     abs_path = path if path.is_absolute() else (root / path)
     if not abs_path.is_file():
         raise FileNotFoundError(f"manifest 记录的文件不存在：{abs_path}")
     rel = abs_path.resolve().relative_to(root.resolve()).as_posix()
-    return {
+    entry = {
         "path": rel,
         "sha256": sha256_file(abs_path),
         "bytes": abs_path.stat().st_size,
         "rows": rows,
     }
+    if external:
+        entry["external"] = True
+    return entry
 
 
 def build_manifest(
@@ -70,11 +74,13 @@ def build_manifest(
     config_hash: str | None,
     inputs: Iterable[Path] = (),
     outputs: Iterable[Path] = (),
+    external: Iterable[Path] = (),
     counts: dict[str, Any] | None = None,
     checks: list[dict[str, Any]] | None = None,
     status: str = "complete",
     notes: str = "",
 ) -> dict[str, Any]:
+    external_set = {p.resolve() for p in external}
     return {
         "stage": stage,
         "run_id": run_id,
@@ -82,8 +88,8 @@ def build_manifest(
         "git_commit": git_commit,
         "rules_hash": rules_hash,
         "config_hash": config_hash,
-        "inputs": [_entry(root, p) for p in inputs],
-        "outputs": [_entry(root, p) for p in outputs],
+        "inputs": [_entry(root, p, external=p.resolve() in external_set) for p in inputs],
+        "outputs": [_entry(root, p, external=p.resolve() in external_set) for p in outputs],
         "counts": counts or {},
         "checks": checks or [],
         "status": status,
@@ -133,6 +139,8 @@ def verify_manifest(manifest_path: Path, root: Path) -> CheckResult:
         for item in data.get(kind, []):
             target = root / item["path"]
             if not target.is_file():
+                if item.get("external"):
+                    continue  # 受限数据不进仓；本地缺失不算篡改
                 problems.append(f"缺少 {kind} 文件：{item['path']}")
                 continue
             if sha256_file(target) != item["sha256"]:

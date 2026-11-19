@@ -6,7 +6,17 @@
 |---|---|---|---|---|---|
 | stage-00 baseline | `20261119T154456Z-6b5e095` | 不变量快照：`docs/PROTOCOL.md`、`LICENSE` | 2 文件 / 7,019 B | `stage-00` | 通过 |
 | stage-01 intake | `20261119T153935Z-bb38d28a` | `corpus_manifest.csv`、`registry.csv`、`intake_report.md` | 文件 21 / **文章 21** / 补充 0 / 重复 0；扫描 0；无 DOI 3 | `stage-01` | 通过 |
+| stage-03 ingest | `20261119T155227Z-2312dddf` | `data/02_ingest/<id>/packet.json`×21、`pages.jsonl`、`tables/`、`ingest_qa.csv` | 21 篇 / 159 表 / 1,595,484 字符 / 3.6 MB | `stage-03` | 通过 |
 | stage-02 rules | `20261119T154452Z-6b5e095` | `fields.yaml`、`decisions.yaml`、两份 Schema、`template_contract.json`、`clean_codebook_BLANK.xlsx`、`rules.lock.json` | 28 字段 / 33 列 / 4 表；V01–V50；10 文件 / 92,648 B | `stage-02` | 通过（待 G1 签字） |
+
+## stage-03 验收记录
+
+- 21 篇全部生成 `packet.json`，`packet_hash` 唯一 21/21；A/B 拿同一份字节
+- 表格 159 个（含页码、表号线索、Markdown + CSV）；总字符 1,595,484
+- 3 篇存在低文本页（学位论文封面/图页），已标 `ocr=true` 并计入 QA，未静默跳过
+- `data/02_ingest/` 为受限数据（全文），**不进 git**；manifest 中以 `external: true` 标记，
+  本地缺失不算篡改，存在则仍校验哈希
+- `pytest`：93 passed
 
 ## stage-02 验收记录
 

@@ -208,6 +208,28 @@ def cmd_rules(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ingest(args: argparse.Namespace) -> int:
+    from .ingest.pipeline_ingest import run_ingest
+
+    root = _root(args)
+    try:
+        cfg = load_config(root)
+    except ConfigError as exc:
+        print(f"配置错误：{exc}", file=sys.stderr)
+        return 2
+    if args.batch != cfg.pipeline.batch_id:
+        print(f"批次不一致：--batch {args.batch} vs {cfg.pipeline.batch_id}", file=sys.stderr)
+        return 2
+
+    result = run_ingest(root, cfg, limit=args.limit, dry_run=args.dry_run)
+    print(f"文章 {result.articles}，写入 packet {result.packets}，"
+          f"表格 {result.total_tables}，字符 {result.total_chars:,}")
+    print(f"含扫描页文章：{result.scanned}")
+    print(f"QA：{result.qa_path.relative_to(root)}")
+    print(f"manifest：{result.manifest_path.relative_to(root)}")
+    return 0
+
+
 def _not_implemented(command: str) -> int:
     stage = STAGE_OF_COMMAND.get(command, 9)
     print(
@@ -231,6 +253,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_intake(args)
     if args.command == "rules":
         return cmd_rules(args)
+    if args.command == "ingest":
+        return cmd_ingest(args)
     if args.command == "verify":
         return cmd_verify(args)
     return _not_implemented(args.command)

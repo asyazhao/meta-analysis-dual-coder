@@ -72,3 +72,24 @@
   相等即 `ConfigError`，不进入运行。
 - **影响**：`configs/pipeline.yaml` 必须提供两个不同种子。
 - **状态**：生效中
+
+## DEV-007 G1 以「继续」放行，三项口径未逐条裁定
+
+- **日期**：2026-11-19
+- **背景**：G1 需确认派生模板列位与 GAP-003/004/005。用户回复「继续」，未逐项裁定。
+- **决定**：按 `CODING_PLAN.md` 最具体条款执行（GAP-003 依 §5.5 字面；GAP-004 只在 md
+  明确覆盖的情形合并；GAP-005 分隔列 F/K/O/T/V）；三项在 `RULE_GAPS.md` 中仍为 `unresolved`。
+- **影响**：若之后组内改口径，受影响字段需重新编码并在报告中披露，不得静默改值。
+- **状态**：生效中
+
+## DEV-008 venv 采用非可编辑安装
+
+- **日期**：2026-11-19
+- **背景**：本机 Python 3.13 + macOS，setuptools 生成的 `__editable__.*.pth` 会带 `UF_HIDDEN`
+  标志，`site.py` 直接跳过，导致 `import meta_coding` 时好时坏；`sitecustomize` 也被基础
+  conda 环境里的同名模块抢先，不可靠。
+- **决定**：`make install` 在可编辑安装后再执行一次 `pip install --no-deps --no-build-isolation .`，
+  把 `src/` 实体拷进 venv；改完代码跑 `make sync`。CI（Linux）仍用可编辑安装，不受影响。
+- **影响**：本机 CLI 运行的是安装副本，测试仍用 `pythonpath=src` 指向源码；改代码后忘记
+  `make sync` 会出现"测试过了但 CLI 还是旧行为"，已在 RUNBOOK 标注。
+- **状态**：生效中

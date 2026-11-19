@@ -1,4 +1,4 @@
-.PHONY: help install test lint fmt verify init clean tree
+.PHONY: help install sync test lint fmt verify init clean tree
 
 PY := .venv/bin/python
 PIP := .venv/bin/python -m pip
@@ -6,17 +6,13 @@ PIP := .venv/bin/python -m pip
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
 
-install: ## 建 venv 并安装可编辑包
+install: ## 建 venv、装依赖，并把源码同步进 venv
 	python3 -m venv .venv
 	$(PIP) install -q -e ".[dev]"
-	# Python 3.13 会跳过带 macOS UF_HIDDEN 标志的 .pth（setuptools 的
-	# __editable__.meta_coding-*.pth 正好会被跳过），导致 import 失败。
-	# 用 .py 形式的 sitecustomize 兜底——site 按模块名导入，不看文件标志位。
-	printf '%s\n' \
-	  'import sys' \
-	  '_SRC = "$(CURDIR)/src"' \
-	  'if _SRC not in sys.path: sys.path.insert(0, _SRC)' \
-	  > .venv/lib/python*/site-packages/sitecustomize.py
+	$(MAKE) sync
+
+sync: ## 把当前 src 重新装进 venv（改完代码后跑一次）
+	$(PIP) install -q --no-deps --no-build-isolation --force-reinstall .
 
 test: ## 跑全部测试
 	$(PY) -m pytest -q
