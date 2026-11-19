@@ -1,0 +1,3406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>meta-coding — 把判断，摊开给人看。</title>
+<meta name="description" content="把一份编码规则、一批论文、三个模型 API，变成可核对的多模型编码结果、逐字段差异与带原文依据的修改建议。双模型独立编码，第三方裁决。规则是输入，不是常量。">
+<meta name="theme-color" content="#FFFFFF">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; form-action 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src https://api.deepseek.com; font-src 'self'; object-src 'none'">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="meta-coding — 把判断，摊开给人看。">
+<meta property="og:description" content="双模型独立编码、逐字段比对、第三方裁决。输出可核对的结果、差异，与带原文页码的修改建议。规则是输入，不是常量。">
+<meta property="og:url" content="https://asyazhao.github.io/meta-analysis-dual-coder/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:,">
+<style>
+/* ============================================================
+   meta-coding — static product page
+   Palette: paper / ink / one accent. No gradients, shadows,
+   rounded cards, external fonts, images, or JS frameworks.
+   ============================================================ */
+
+:root {
+  --paper: #FFFFFF;
+  --ink: #101110;
+  --body: #2E2E2A;
+  --muted: #62625B;
+  --faint: #77776F;
+  --rule: #E4E3DE;
+  --rule-strong: #C8C7C0;
+  --wash: #F7F7F4;
+  --wash-2: #FBFBF9;
+  --accent: #A63D40;
+  --accent-deep: #8C3134;
+  --accent-wash: #FBF4F3;
+
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  --serif: "Songti SC", "STSong", "Noto Serif CJK SC", "Source Han Serif SC",
+           "SimSun", Georgia, "Times New Roman", serif;
+  --mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
+          "Liberation Mono", monospace;
+
+  --shell: 1160px;
+  --measure: 720px;
+  --gutter: clamp(20px, 4vw, 48px);
+  --s1: 8px;
+  --s2: 16px;
+  --s3: 24px;
+  --s4: 32px;
+  --s5: 40px;
+  --s6: 48px;
+  --s8: 64px;
+  --s10: 80px;
+  --s12: 96px;
+  --s16: 128px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button, input, select, textarea { border-radius: 0; }
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--body);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+::selection { background: var(--accent); color: var(--paper); }
+
+h1, h2, h3, h4, p, dl, dd, dt, ol, ul, blockquote { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+img, svg { max-width: 100%; }
+a { color: var(--ink); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--accent); }
+button { font: inherit; color: inherit; }
+table { border-collapse: collapse; width: 100%; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.shell {
+  max-width: var(--shell);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.measure { max-width: var(--measure); }
+
+.mono {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip {
+  position: fixed;
+  left: var(--s2);
+  top: -80px;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.skip:focus { top: var(--s2); color: var(--paper); }
+
+.sq {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--ink);
+  flex: 0 0 auto;
+}
+.sq--accent { background: var(--accent); }
+.sq--hollow {
+  background: transparent;
+  border: 1px solid var(--accent);
+}
+
+/* ---------- header ---------- */
+
+.site-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+
+.site-head__in {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s6);
+  height: 64px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink);
+  min-width: 0;
+}
+.brand:hover { color: var(--ink); }
+.brand__glyph {
+  width: 26px; height: 26px;
+  border: 1px solid var(--ink);
+  display: grid;
+  place-items: center;
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1;
+  padding-bottom: 1px;
+}
+.brand__name {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.brand__sub {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+  color: var(--faint);
+  padding-left: 10px;
+  border-left: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.site-nav {
+  display: flex;
+  justify-content: center;
+  gap: var(--s4);
+  min-width: 0;
+}
+.site-nav a {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 5px 0;
+  border-bottom: 1px solid transparent;
+  white-space: nowrap;
+}
+.site-nav a:hover { color: var(--ink); }
+.site-nav a[aria-current="location"] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.site-head__gh {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 3px;
+  white-space: nowrap;
+}
+.site-head__gh:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ---------- hero ---------- */
+
+.hero {
+  padding-top: var(--s12);
+  padding-bottom: var(--s8);
+}
+
+.hero__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: clamp(48px, 8vw, 96px);
+  align-items: start;
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: var(--s4);
+}
+
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(48px, 6.2vw, 78px);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -.045em;
+  color: var(--ink);
+  max-width: 780px;
+  margin-bottom: var(--s4);
+}
+
+.hero__def {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--body);
+  max-width: 560px;
+}
+
+.hero__sub {
+  margin-top: var(--s2);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+  max-width: 560px;
+}
+.hero__sub strong { color: var(--ink); font-weight: 600; }
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: var(--s5);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 48px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+.btn span[aria-hidden="true"] { font-size: 13px; line-height: 1; }
+.btn--fill {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn--fill:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+}
+.btn--line:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.hero__rail {
+  border-top: 1px solid var(--ink);
+  align-self: start;
+  margin-top: 2px;
+}
+.rail__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rail__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.rail__row dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.rail__row dd {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  text-align: right;
+}
+.rail__row dd span {
+  font-size: 9px;
+  color: var(--faint);
+  margin-left: 2px;
+}
+.rail__note {
+  padding: 12px 0 16px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--faint);
+}
+.rail__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rail__foot .sq--hollow { width: 5px; height: 5px; }
+
+.hero__meta {
+  margin-top: var(--s10);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.hero__meta span {
+  padding: 12px 0;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hero__meta span + span {
+  padding-left: var(--s3);
+  border-left: 1px solid var(--rule);
+}
+
+/* ---------- sections ---------- */
+
+.section {
+  padding-block: var(--s16);
+  border-top: 1px solid var(--rule);
+  scroll-margin-top: 72px;
+}
+
+.section__grid {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  column-gap: var(--s6);
+  align-items: start;
+}
+
+.section__label {
+  position: sticky;
+  top: 104px;
+  border-right: 1px solid var(--rule);
+  padding-right: var(--s3);
+  min-height: 1px;
+}
+.sec-no {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.sec-kicker {
+  display: block;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+  line-height: 1.6;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.section__body { max-width: 856px; }
+
+.section h2 {
+  font-family: var(--serif);
+  font-size: clamp(32px, 3.9vw, 48px);
+  font-weight: 500;
+  line-height: 1.18;
+  letter-spacing: -.035em;
+  color: var(--ink);
+  max-width: 720px;
+  margin-bottom: var(--s4);
+}
+
+.lead {
+  font-size: 19px;
+  line-height: 1.62;
+  color: var(--body);
+  max-width: 720px;
+  margin-bottom: var(--s6);
+}
+
+.prose p {
+  max-width: 720px;
+  margin-bottom: var(--s3);
+  font-size: 17px;
+  line-height: 1.6;
+}
+.prose p:last-child { margin-bottom: 0; }
+.prose strong { color: var(--ink); font-weight: 600; }
+.prose code,
+.screen code,
+.demo__foot code,
+.status-note code {
+  font-family: var(--mono);
+  font-size: .82em;
+  letter-spacing: .01em;
+  background: var(--wash);
+  padding: 1px 4px;
+  color: var(--ink);
+}
+
+/* ---------- problem ---------- */
+
+.issues {
+  border-top: 1px solid var(--ink);
+  margin-top: var(--s8);
+}
+
+.issue {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: var(--s2);
+  padding: var(--s3) 0 var(--s4);
+  border-bottom: 1px solid var(--rule);
+}
+.issue__no {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--accent);
+  padding-top: 5px;
+}
+.issue h3 {
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.issue p {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 680px;
+}
+
+.pull {
+  margin-top: var(--s8);
+  padding-left: var(--s3);
+  border-left: 2px solid var(--accent);
+  font-family: var(--serif);
+  font-size: clamp(25px, 3vw, 34px);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -.025em;
+  color: var(--ink);
+  max-width: 620px;
+}
+.pull cite {
+  display: block;
+  margin-top: var(--s2);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  font-style: normal;
+  color: var(--faint);
+}
+
+.method-note {
+  margin-top: var(--s8);
+  max-width: 720px;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: var(--s3);
+}
+.method-note__label {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding-top: 3px;
+}
+.method-note p {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ---------- workflow ---------- */
+
+.pipeline {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--ink);
+  margin-bottom: var(--s2);
+  overflow-wrap: anywhere;
+}
+.pipeline b { color: var(--accent); font-weight: 400; }
+
+.steps { border-bottom: 1px solid var(--ink); }
+
+.step {
+  display: grid;
+  grid-template-columns: 42px 174px minmax(0, 1fr) 152px;
+  gap: var(--s3);
+  align-items: start;
+  padding: var(--s3) 0 var(--s3);
+  border-top: 1px solid var(--rule);
+}
+.step:first-child { border-top: 0; }
+.step__no {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  color: var(--accent);
+  padding-top: 4px;
+}
+.step__name h3 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -.01em;
+  color: var(--ink);
+}
+.step__tag {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.step__desc {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 380px;
+}
+.step__out {
+  font-family: var(--mono);
+  font-size: 8px;
+  line-height: 1.6;
+  letter-spacing: .02em;
+  color: var(--faint);
+  text-align: right;
+  padding-top: 4px;
+  overflow-wrap: anywhere;
+}
+.step--gate .step__tag { color: var(--accent); }
+.step--gate .step__name h3 { text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 5px; }
+
+.gate-note {
+  display: flex;
+  gap: var(--s2);
+  align-items: flex-start;
+  margin-top: var(--s3);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--rule);
+  max-width: 720px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.gate-note .sq { margin-top: 6px; }
+
+/* ---------- demo / application frame ---------- */
+
+.section--demo { padding-bottom: var(--s12); }
+
+.demo__head {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  column-gap: var(--s6);
+  align-items: start;
+  margin-bottom: var(--s6);
+}
+.demo__head .section__label { position: static; }
+.demo__head h2 { margin-bottom: var(--s2); }
+.demo__head p {
+  max-width: 720px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.app {
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  min-height: 620px;
+}
+
+.app__bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s3);
+  height: 42px;
+  padding: 0 var(--s2);
+  background: var(--wash);
+  border-bottom: 1px solid var(--rule);
+}
+.app__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.app__mark {
+  width: 17px; height: 17px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: 10px;
+  line-height: 1;
+}
+.app__crumb {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .03em;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.app__crumb b { color: var(--ink); font-weight: 400; }
+.app__host {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  justify-self: end;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .05em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.app__host .sq { width: 5px; height: 5px; }
+
+.app__body {
+  display: grid;
+  grid-template-columns: 202px minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.app__nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--s3) 12px var(--s2);
+  border-right: 1px solid var(--rule);
+  background: var(--wash-2);
+}
+.app__navlabel {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 0 10px;
+  margin-bottom: 8px;
+}
+.app__tab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--body);
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+}
+.app__tab:hover { background: var(--wash); }
+.app__tab[aria-selected="true"] {
+  background: var(--paper);
+  border-left-color: var(--accent);
+  color: var(--ink);
+}
+.app__count {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .04em;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.app__tab[aria-selected="true"] .app__count { color: var(--accent); }
+
+.app__run {
+  margin-top: var(--s4);
+  padding: var(--s2) 10px 0;
+  border-top: 1px solid var(--rule);
+}
+.app__run-label {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 10px;
+}
+.app__run dl { display: grid; gap: 7px; }
+.app__run-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .02em;
+  color: var(--muted);
+}
+.app__run-row dd { color: var(--ink); text-align: right; }
+.app__progress {
+  height: 2px;
+  background: var(--rule);
+  margin: 14px 0 6px;
+}
+.app__progress span {
+  display: block;
+  height: 2px;
+  width: 80%;
+  background: var(--accent);
+}
+.app__progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.app__sidefoot {
+  margin-top: auto;
+  padding: 14px 10px 0;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.app__main {
+  padding: var(--s3) var(--s4) var(--s3);
+  min-width: 0;
+}
+
+.screen { min-height: 520px; }
+.screen[hidden] { display: none; }
+
+.screen__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-bottom: var(--s2);
+}
+.screen__kicker {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 7px;
+}
+.screen__head h3 {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -.03em;
+  color: var(--ink);
+}
+.screen__head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.screen__stamp {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .05em;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 19px;
+  padding: 0 6px;
+  border: 1px solid var(--rule-strong);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  line-height: 1;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pill--solid {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.pill--critical {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+}
+.pill--major {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pill--minor { color: var(--faint); }
+.pill--accent {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.screen__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: var(--s2);
+}
+.screen__stat {
+  padding: 10px 12px 11px;
+}
+.screen__stat + .screen__stat { border-left: 1px solid var(--rule); }
+.screen__stat dt {
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 4px;
+}
+.screen__stat dd {
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 1.2;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.screen__stat dd.is-small {
+  font-size: 9px;
+  line-height: 16px;
+  letter-spacing: .01em;
+}
+.screen__stat dd .unit {
+  font-size: 8px;
+  color: var(--faint);
+  margin-left: 3px;
+  letter-spacing: .04em;
+}
+
+.screen__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin-bottom: var(--s2);
+}
+.screen__note .sq { margin-top: 5px; width: 4px; height: 4px; }
+
+.table-scroll {
+  overflow: auto;
+  max-height: 460px;
+  border-bottom: 1px solid var(--rule);
+  overscroll-behavior: contain;
+}
+.table-scroll--x { max-height: none; overflow: auto; }
+
+.dtable {
+  min-width: 660px;
+  table-layout: fixed;
+}
+.dtable--rules { min-width: 780px; }
+.dtable th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--paper);
+  padding: 7px 10px 8px;
+  border-bottom: 1px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 7px;
+  line-height: 1.3;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.dtable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--body);
+  vertical-align: top;
+}
+.dtable tbody:last-child tr:last-child td { border-bottom: 0; }
+
+.dtable--rules th:nth-child(1),
+.dtable--rules td:nth-child(1) { width: 32px; }
+.dtable--rules th:nth-child(2),
+.dtable--rules td:nth-child(2) { width: 150px; }
+.dtable--rules th:nth-child(3),
+.dtable--rules td:nth-child(3) { width: 130px; }
+.dtable--rules th:nth-child(4),
+.dtable--rules td:nth-child(4) { width: 210px; }
+.dtable--rules th:nth-child(6),
+.dtable--rules td:nth-child(6) { width: 78px; }
+
+.dtable--results th:nth-child(1),
+.dtable--results td:nth-child(1) { width: 178px; }
+.dtable--results th:nth-child(2),
+.dtable--results td:nth-child(2),
+.dtable--results th:nth-child(3),
+.dtable--results td:nth-child(3),
+.dtable--results th:nth-child(4),
+.dtable--results td:nth-child(4) { width: 104px; }
+.dtable--results th:nth-child(5),
+.dtable--results td:nth-child(5) { width: 62px; }
+.dtable--results th:nth-child(6),
+.dtable--results td:nth-child(6) { width: 84px; }
+
+.fname {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.cell-mark {
+  display: inline-block;
+  width: 13px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--rule-strong);
+}
+.is-diff .cell-mark { color: var(--accent); }
+.c-val {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  overflow-wrap: break-word;
+}
+.c-val.is-suggest { color: var(--ink); font-weight: 600; }
+.c-val.is-missing { color: var(--faint); }
+.dtable td.c-val {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+.dtable td.c-val.is-suggest { color: var(--ink); font-weight: 600; }
+.dtable td.c-val.is-missing { color: var(--faint); }
+.c-page {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .02em;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.c-sev { white-space: nowrap; }
+
+.grp-row td {
+  padding: 6px 10px;
+  background: var(--wash);
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cell-row.is-diff { background: var(--accent-wash); }
+.cell-row.is-diff td:first-child { border-left: 2px solid var(--accent); }
+.cell-row[data-evidence] { cursor: pointer; }
+.cell-row[data-evidence]:hover { background: #F7F1F0; }
+.cell-row[data-evidence]:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.evidence-row td {
+  padding: 0;
+  background: var(--wash-2);
+  border-bottom: 1px solid var(--rule);
+}
+.evidence {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.25fr;
+  gap: var(--s3);
+  padding: 14px 16px 16px;
+}
+.evidence__col { min-width: 0; }
+.evidence__col--ruling {
+  border-left: 2px solid var(--accent);
+  padding-left: 12px;
+}
+.e-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 6px;
+}
+.e-value {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+.evidence blockquote {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.evidence__col--ruling p {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--body);
+}
+.e-type {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: .05em;
+  color: var(--accent);
+}
+
+.screen__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding-top: 9px;
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .05em;
+  color: var(--faint);
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding-bottom: 10px;
+}
+.chip {
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  padding: 3px 0 4px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+}
+.chip span {
+  color: var(--faint);
+  margin-left: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+.chip[aria-pressed="true"] span { color: var(--accent); }
+.filters__hint {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .04em;
+  color: var(--faint);
+}
+.mobile-hint { display: none; }
+
+/* ---------- advice screen ---------- */
+
+.advice-list { border-top: 1px solid var(--ink); }
+
+.advice {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 172px;
+  gap: var(--s2);
+  padding: 15px 0 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.advice__no {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .08em;
+  color: var(--accent);
+  padding-top: 3px;
+}
+.advice__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .03em;
+  color: var(--faint);
+  margin-bottom: 5px;
+}
+.advice__meta .pill { height: 16px; font-size: 6.5px; padding: 0 4px; }
+.advice h4 {
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.advice h4 .fname { font-size: 11px; }
+.advice__from { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.advice__arrow { color: var(--faint); padding: 0 4px; }
+.advice__to { font-family: var(--mono); font-size: 11px; color: var(--accent); font-weight: 600; }
+.advice__why {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.advice__quote {
+  color: var(--faint);
+  margin-left: 4px;
+}
+.advice__act {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.advice__state {
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.advice__state.is-accepted { color: var(--accent); }
+.advice__state.is-rejected { color: var(--muted); }
+.advice__buttons { display: flex; gap: 6px; }
+.mini {
+  height: 25px;
+  padding: 0 9px;
+  border: 1px solid var(--rule-strong);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+.mini:hover { border-color: var(--ink); color: var(--ink); }
+.mini[data-decision="accepted"].is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+}
+.mini[data-decision="rejected"].is-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.advice.is-rejected h4,
+.advice.is-rejected .advice__why { opacity: .55; }
+
+/* ---------- demo footer ---------- */
+
+.demo__foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--ink);
+  margin-top: var(--s2);
+}
+.demo__foot .sq { margin-top: 6px; }
+.demo__foot p {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 760px;
+}
+.demo__foot p strong { color: var(--ink); font-weight: 600; }
+.demo__foot .mono {
+  margin-left: auto;
+  font-size: 7.5px;
+  color: var(--faint);
+  white-space: nowrap;
+  padding-top: 3px;
+}
+
+/* ---------- status ---------- */
+
+.status-legend {
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding-bottom: var(--s3);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.status-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.status-legend .sq { width: 5px; height: 5px; }
+
+.status-table { min-width: 620px; }
+.status-table th {
+  padding: 8px 12px;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  font-weight: 400;
+  text-align: left;
+}
+.status-table th:last-child { text-align: right; }
+.status-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--body);
+  vertical-align: top;
+}
+.status-table td:first-child { color: var(--ink); }
+.status-table td:last-child { text-align: right; white-space: nowrap; }
+.status-table .detail {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--faint);
+}
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.state .sq { width: 5px; height: 5px; }
+.state--done { color: var(--ink); }
+.state--pending { color: var(--accent); }
+.state--trial { color: var(--accent); }
+
+.status-note {
+  margin-top: var(--s3);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--rule);
+  max-width: 720px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.status-note strong { color: var(--ink); font-weight: 600; }
+
+.limits {
+  margin-top: var(--s10);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--ink);
+}
+.limits__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s3);
+}
+.limits__head h3 {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+.limits__head span {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.limits__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--s6);
+}
+.limit {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 8px;
+  padding: var(--s2) 0 var(--s3);
+  border-top: 1px solid var(--rule);
+}
+.limit__no {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--accent);
+  padding-top: 3px;
+}
+.limit h4 {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.limit p {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ---------- try / browser-only single extraction ---------- */
+
+.section--try { padding-bottom: var(--s16); }
+
+.try__head { margin-bottom: var(--s6); }
+
+.try__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 272px;
+  gap: var(--s8);
+  align-items: start;
+}
+
+.trial-row {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--s4);
+}
+
+.field { margin-bottom: var(--s3); }
+.field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 8px;
+}
+.field__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+.field__label-row .mono { color: var(--faint); font-size: 8px; }
+.field input,
+.field select {
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--rule-strong);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+}
+.field input#trial-key {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: .06em;
+}
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 22px;
+  cursor: pointer;
+}
+.select-wrap { position: relative; }
+.select-wrap::after {
+  content: "↓";
+  position: absolute;
+  right: 2px;
+  top: 13px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  pointer-events: none;
+}
+.field textarea {
+  width: 100%;
+  min-height: 184px;
+  padding: 12px;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper);
+  color: var(--body);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.65;
+  resize: vertical;
+}
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.field input::placeholder { color: var(--rule-strong); }
+.field__hint {
+  margin-top: 7px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--faint);
+}
+
+.trial-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: var(--s2);
+}
+.trial-status {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 8px;
+  line-height: 1.5;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.btn:disabled,
+.btn:disabled:hover {
+  opacity: 1;
+  cursor: not-allowed;
+  background: var(--wash);
+  border-color: var(--rule-strong);
+  color: var(--faint);
+}
+.btn--fill:disabled,
+.btn--fill:disabled:hover {
+  background: var(--wash);
+  border-color: var(--rule-strong);
+  color: var(--faint);
+  opacity: 1;
+}
+
+.try__notes { border-top: 1px solid var(--ink); }
+.try-note {
+  padding: 14px 0 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.try-note .mono {
+  display: block;
+  font-size: 7.5px;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.try-note p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.prompt-details {
+  margin-top: var(--s4);
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+.prompt-details summary {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+}
+.prompt-details summary:hover { color: var(--ink); }
+.prompt-details pre {
+  margin-top: 12px;
+  padding: 14px;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--rule);
+  background: var(--wash);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.trial-output {
+  margin-top: var(--s8);
+  border-top: 1px solid var(--ink);
+}
+.trial-output__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  color: var(--faint);
+  font-size: 8px;
+}
+.trial-output__head .mono:last-child {
+  text-transform: none;
+  letter-spacing: .02em;
+}
+.trial-empty {
+  display: flex;
+  align-items: center;
+  min-height: 112px;
+  margin-top: 12px;
+  padding: 20px;
+  border: 1px solid var(--rule);
+  background: var(--wash-2);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+.trial-code {
+  margin: 12px 0 0;
+  padding: 20px;
+  max-height: 380px;
+  overflow: auto;
+  background: var(--ink);
+  color: #E6E6E0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.7;
+  letter-spacing: 0;
+  white-space: pre;
+  tab-size: 2;
+}
+.trial-code code {
+  font: inherit;
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+.trial-error {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-wash);
+}
+.trial-error strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.trial-error p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.trial-error p + p {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--faint);
+}
+.trial-disclaimer {
+  margin-top: 12px;
+  max-width: 720px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--faint);
+}
+
+/* ---------- footer ---------- */
+
+.site-foot {
+  background: var(--ink);
+  color: var(--paper);
+  padding-top: var(--s12);
+  padding-bottom: var(--s4);
+}
+
+.foot__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: var(--s8);
+  align-items: end;
+  padding-bottom: var(--s8);
+  border-bottom: 1px solid #33332F;
+}
+.foot__line {
+  font-family: var(--serif);
+  font-size: clamp(38px, 5.2vw, 64px);
+  font-weight: 500;
+  line-height: 1.16;
+  letter-spacing: -.04em;
+  color: var(--paper);
+}
+.foot__links {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  padding-bottom: 6px;
+}
+.foot__links a {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #D8D8D2;
+  text-decoration: none;
+  border-bottom: 1px solid #4A4A44;
+  padding-bottom: 3px;
+}
+.foot__links a:hover { color: var(--paper); border-bottom-color: var(--paper); }
+
+.foot__notice {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid #33332F;
+}
+.foot__notice .sq { width: 6px; height: 6px; }
+.foot__notice strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--paper);
+}
+.foot__notice span:last-child {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #A8A8A1;
+}
+
+.foot__base {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding-top: var(--s3);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #9A9A93;
+}
+.foot__base a { color: #D8D8D2; text-decoration: none; }
+.foot__base a:hover { color: var(--paper); }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1020px) {
+  .hero__grid { grid-template-columns: minmax(0, 1fr) 240px; gap: var(--s8); }
+  .section__grid { grid-template-columns: 128px minmax(0, 1fr); column-gap: var(--s4); }
+  .demo__head { grid-template-columns: 128px minmax(0, 1fr); column-gap: var(--s4); }
+  .step { grid-template-columns: 38px 158px minmax(0, 1fr); }
+  .step__out { grid-column: 3; text-align: left; padding-top: 0; }
+  .app__body { grid-template-columns: 184px minmax(0, 1fr); }
+  .app__main { padding-inline: var(--s3); }
+}
+
+@media (max-width: 820px) {
+  .site-nav { display: none; }
+  .site-head__in { grid-template-columns: minmax(0, 1fr) auto; }
+  .brand__sub { display: none; }
+
+  .hero { padding-top: var(--s10); padding-bottom: var(--s6); }
+  .hero__grid { grid-template-columns: 1fr; gap: var(--s6); }
+  .hero__rail { max-width: 420px; }
+  .hero__meta { margin-top: var(--s6); }
+  .hero__meta span { padding: 10px 0; font-size: 7.5px; }
+  .hero__meta span + span { padding-left: var(--s2); }
+
+  .section { padding-block: var(--s12); }
+  .section__grid,
+  .demo__head { grid-template-columns: 1fr; row-gap: var(--s3); }
+  .section__label {
+    position: static;
+    border-right: 0;
+    border-top: 1px solid var(--ink);
+    padding: var(--s1) 0 0;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .section__label .sec-no { margin-bottom: 0; }
+  .demo__head .section__label { border-top: 1px solid var(--ink); }
+  .section h2 { margin-bottom: var(--s3); }
+  .lead { margin-bottom: var(--s5); }
+
+  .step { grid-template-columns: 32px minmax(0, 1fr); gap: var(--s2); }
+  .step__no { grid-row: 1 / span 2; }
+  .step__name { grid-column: 2; }
+  .step__desc { grid-column: 2; max-width: none; }
+  .step__out { grid-column: 2; }
+  .step__tag { display: inline-block; margin-left: 8px; margin-top: 0; }
+
+  .app__body { grid-template-columns: 1fr; }
+  .app__nav {
+    flex-direction: row;
+    align-items: stretch;
+    overflow-x: auto;
+    padding: 0 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    background: var(--wash-2);
+  }
+  .app__navlabel, .app__run, .app__sidefoot { display: none; }
+  .app__tab {
+    width: auto;
+    min-width: max-content;
+    height: 48px;
+    padding: 0 14px;
+    border-left: 0;
+    border-bottom: 2px solid transparent;
+  }
+  .app__tab[aria-selected="true"] {
+    border-left-color: transparent;
+    border-bottom-color: var(--accent);
+    background: transparent;
+  }
+  .app__count { margin-left: 8px; }
+  .app__main { padding: var(--s3) var(--s2) var(--s2); }
+  .screen { min-height: 0; }
+  .screen__head { flex-direction: column; gap: 8px; }
+  .screen__head-right { justify-content: flex-start; padding-top: 0; }
+  .screen__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .screen__stat:nth-child(3) { border-left: 0; border-top: 1px solid var(--rule); }
+  .screen__stat:nth-child(4) { border-top: 1px solid var(--rule); }
+  .table-scroll { max-height: 420px; }
+  .filters__hint { display: none; }
+  .mobile-hint {
+    display: block;
+    margin: 0 0 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .03em;
+    color: var(--muted);
+  }
+  .evidence { grid-template-columns: 1fr; gap: var(--s2); }
+  .evidence__col--ruling { border-left: 0; border-top: 1px solid var(--rule); padding-left: 0; padding-top: 10px; }
+  .advice { grid-template-columns: 26px minmax(0, 1fr); }
+  .advice__act {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .demo__foot { flex-wrap: wrap; }
+  .demo__foot .mono { margin-left: 16px; }
+  .limits__grid { grid-template-columns: 1fr; }
+  .status-table { min-width: 0; display: block; }
+  .status-table thead {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .status-table tbody { display: block; border-top: 1px solid var(--ink); }
+  .status-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .status-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+    font-size: 14px;
+  }
+  .status-table td:first-child { grid-column: 1; }
+  .status-table td:nth-child(2) { grid-column: 1; }
+  .status-table td:last-child {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    text-align: right;
+    align-self: start;
+  }
+  .status-table .detail { margin-top: 3px; }
+  .try__grid { grid-template-columns: 1fr; gap: var(--s6); }
+  .try__notes { border-top: 1px solid var(--ink); }
+  .trial-row { grid-template-columns: 1fr; gap: 0; }
+  .trial-status { margin-left: 0; flex-basis: 100%; }
+  .foot__top { grid-template-columns: 1fr; gap: var(--s5); align-items: start; }
+  .foot__links { grid-template-columns: repeat(2, minmax(0, 1fr)); justify-items: start; }
+  .site-foot { padding-top: var(--s10); }
+}
+
+@media (max-width: 520px) {
+  .hero h1 { font-size: clamp(40px, 11.4vw, 54px); letter-spacing: -.05em; }
+  .hero__actions { flex-direction: column; align-items: stretch; }
+  .btn { width: 100%; }
+  .hero__meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero__meta span:nth-child(3) { border-left: 0; padding-left: 0; border-top: 1px solid var(--rule); }
+  .hero__meta span:nth-child(4) { border-top: 1px solid var(--rule); }
+  .issue { grid-template-columns: 30px minmax(0, 1fr); }
+  .method-note { grid-template-columns: 1fr; gap: 8px; }
+  .app__bar { grid-template-columns: 1fr auto; }
+  .app__crumb { display: none; }
+  .app__host { font-size: 7px; }
+  .screen__head h3 { font-size: 23px; }
+  .step__name h3 { font-size: 15px; }
+  .advice { grid-template-columns: 1fr; }
+  .advice__no { padding-top: 0; }
+  .advice__act { grid-column: 1; }
+  .trial-actions .btn { width: 100%; }
+  .trial-status { flex-basis: auto; }
+  .foot__notice { display: block; }
+  .foot__notice strong { display: block; margin: 8px 0 4px; }
+  .foot__notice span:last-child { display: block; }
+  .foot__base { display: grid; gap: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}
+
+@media print {
+  .site-head, .hero__actions, .app__nav, .filters, .advice__buttons, .skip { display: none; }
+  .app { break-inside: avoid; }
+  body { font-size: 11pt; }
+  .section { padding-block: 32pt; }
+  .site-foot { background: transparent; color: var(--ink); padding-top: 24pt; }
+  .foot__line, .foot__notice strong { color: var(--ink); }
+  .foot__notice span:last-child, .foot__links a, .foot__base { color: var(--muted); }
+}
+</style>
+</head>
+<body id="top">
+<a class="skip" href="#main">跳到主要内容</a>
+
+<header class="site-head">
+  <div class="shell site-head__in">
+    <a class="brand" href="#top" aria-label="meta-coding，回到顶部">
+      <span class="brand__glyph" aria-hidden="true">M</span>
+      <span class="brand__name">meta-coding</span>
+      <span class="brand__sub" aria-hidden="true">RESEARCH TOOL</span>
+    </a>
+    <nav class="site-nav" aria-label="页面导航">
+      <a href="#problem">01 问题</a>
+      <a href="#workflow">02 工作流</a>
+      <a href="#demo">03 演示</a>
+      <a href="#status">04 状态</a>
+      <a href="#try">05 试用</a>
+    </nav>
+    <a class="site-head__gh" href="https://github.com/asyazhao/meta-analysis-dual-coder">GitHub <span aria-hidden="true">↗</span></a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="shell">
+      <div class="hero__grid">
+        <div class="hero__copy">
+          <p class="kicker"><span class="sq sq--accent" aria-hidden="true"></span> Meta-coding / double-coding workbench</p>
+          <h1 id="hero-title">把判断，<br>摊开给人看。</h1>
+          <p class="hero__def">一份编码规则、一批论文、三个模型 API，变成可核对的多模型编码结果、逐字段差异，和带原文依据的修改建议。</p>
+          <p class="hero__sub"><strong>规则是输入，不是常量。</strong>换一份规则文档，就是换一个研究课题。</p>
+          <div class="hero__actions">
+            <a class="btn btn--fill" href="#demo">看界面演示 <span aria-hidden="true">↓</span></a>
+            <a class="btn btn--line" href="https://github.com/asyazhao/meta-analysis-dual-coder">GitHub 仓库 <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+
+        <aside class="hero__rail" aria-label="仓库当前状态">
+          <div class="rail__head">
+            <span>Repo readout</span>
+            <span class="sq sq--hollow" aria-hidden="true"></span>
+          </div>
+          <dl>
+            <div class="rail__row"><dt>规则包</dt><dd>meta-wbi-v1</dd></div>
+            <div class="rail__row"><dt>字段</dt><dd>28</dd></div>
+            <div class="rail__row"><dt>摄取实测</dt><dd>21<span>篇</span></dd></div>
+            <div class="rail__row"><dt>真实编码</dt><dd>0<span>次</span></dd></div>
+          </dl>
+          <p class="rail__note">无 API key。仓库中尚无真实论文的编码结果，也不把测试数据当作研究结论。页面试用只做单次提取，不写回仓库。</p>
+          <div class="rail__foot"><span class="sq sq--hollow" aria-hidden="true"></span> G2 pipeline calls — off</div>
+        </aside>
+      </div>
+
+      <div class="hero__meta" aria-label="核心特征">
+        <span>双模型独立编码</span>
+        <span>逐字段比对</span>
+        <span>第三方裁决</span>
+        <span>MIT / CC BY 4.0</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PROBLEM ================= -->
+  <section class="section" id="problem" aria-labelledby="problem-title">
+    <div class="shell section__grid">
+      <div class="section__label">
+        <span class="sec-no">01</span>
+        <span class="sec-kicker">The problem</span>
+      </div>
+      <div class="section__body">
+        <h2 id="problem-title">两个答案，<br>不等于两次独立判断。</h2>
+        <p class="lead">人工编码的分歧，常常只剩一个结果，没有留下通往结果的路径。模型能把路径写出来，但它写出来的自信，也可能只是自信。</p>
+
+        <div class="issues">
+          <article class="issue">
+            <span class="issue__no" aria-hidden="true">01</span>
+            <div>
+              <h3>人工编码的差异不可复现</h3>
+              <p>同一份规则、同一篇论文，隔一周再编一遍，结果可能不同。两个编码员之间的分歧，往往只留下「最后选了哪个值」，没有留下可回查的推理路径。</p>
+            </div>
+          </article>
+          <article class="issue">
+            <span class="issue__no" aria-hidden="true">02</span>
+            <div>
+              <h3>单一模型的自信心不等于准确率</h3>
+              <p>模型输出的 confidence 是自评，不是校准概率。一个语气笃定的错值，比一个空值更难被发现；两个模型都「高置信」，也可能只是共享了同一个误读。</p>
+            </div>
+          </article>
+        </div>
+
+        <blockquote class="pull">
+          分歧不是噪声。<br>它是核对开始的地方。
+          <cite>— 这套工具的前提</cite>
+        </blockquote>
+
+        <div class="method-note">
+          <span class="method-note__label">Method note</span>
+          <p>A / B 是独立进程，提示词逐字节一致，只共享同一份 packet。分歧至少不是提示词差异造成的；但共享输入的错误会被两者同时继承，所以一致样本仍需审计。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= WORKFLOW ================= -->
+  <section class="section" id="workflow" aria-labelledby="workflow-title">
+    <div class="shell section__grid">
+      <div class="section__label">
+        <span class="sec-no">02</span>
+        <span class="sec-kicker">The pipeline</span>
+      </div>
+      <div class="section__body">
+        <h2 id="workflow-title">从一份文档，<br>到一份可核对的清单。</h2>
+        <p class="lead">规则文档不是代码里的常量。它被解析成规则包，经人确认、锁定哈希，再驱动后面的每一步。换一份文档，就换一个课题。</p>
+
+        <div class="pipeline" aria-label="流程概览">
+          Document <b>→</b> Pack <b>→</b> A <b>∥</b> B <b>→</b> Diff <b>→</b> Adjudicate <b>→</b> Revisions
+        </div>
+
+        <ol class="steps">
+          <li class="step">
+            <span class="step__no">01</span>
+            <div class="step__name"><h3>规则文档</h3><span class="step__tag">Input</span></div>
+            <p class="step__desc">人写的编码规则，Markdown / PDF / DOCX 原样上传。不要求先改写成模板，也不把规则藏进代码。</p>
+            <span class="step__out">CODING_PLAN.md</span>
+          </li>
+          <li class="step step--gate">
+            <span class="step__no">02</span>
+            <div class="step__name"><h3>规则包</h3><span class="step__tag">G1 · 人工确认</span></div>
+            <p class="step__desc">模型解析出字段表：名称、类型、取值域、缺失规则、原文出处。每字段必须有出处；确认后锁定 <code>pack_hash</code>。</p>
+            <span class="step__out">pack.json · fields.yaml</span>
+          </li>
+          <li class="step">
+            <span class="step__no">03</span>
+            <div class="step__name"><h3>双模型独立编码</h3><span class="step__tag">A ∥ B</span></div>
+            <p class="step__desc">两个独立进程，提示词逐字节一致，结果分开落盘。先证明两边看到的是同一份输入。</p>
+            <span class="step__out">coder_a.jsonl · coder_b.jsonl</span>
+          </li>
+          <li class="step">
+            <span class="step__no">04</span>
+            <div class="step__name"><h3>逐字段比对</h3><span class="step__tag">Deterministic</span></div>
+            <p class="step__desc">不调用模型。按字段比较 A 与 B，分为 agree / mismatch / missing_vs_value，并标出严重度。</p>
+            <span class="step__out">diff/cells.csv</span>
+          </li>
+          <li class="step">
+            <span class="step__no">05</span>
+            <div class="step__name"><h3>第三方裁决</h3><span class="step__tag">Only on diff</span></div>
+            <p class="step__desc">只对分歧调用第三个模型：给建议值、原文证据、页码与理由。一致样本不重复花 token。</p>
+            <span class="step__out">adjudication.jsonl</span>
+          </li>
+          <li class="step">
+            <span class="step__no">06</span>
+            <div class="step__name"><h3>修改建议</h3><span class="step__tag">Human decides</span></div>
+            <p class="step__desc">逐条采纳或驳回，写回 decisions 与 provenance。导出的每个文件带 sha256，改动有迹可循。</p>
+            <span class="step__out">revisions.md</span>
+          </li>
+        </ol>
+
+        <div class="gate-note">
+          <span class="sq sq--accent" aria-hidden="true"></span>
+          <p>G2 未开启时，真实调用被 403 拒绝，只允许 dry-run；G3 未开启时不能导出。门禁不是提示语，是服务端行为。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DEMO ================= -->
+  <section class="section section--demo" id="demo" aria-labelledby="demo-title">
+    <div class="shell">
+      <div class="demo__head">
+        <div class="section__label">
+          <span class="sec-no">03</span>
+          <span class="sec-kicker">The interface</span>
+        </div>
+        <div>
+          <h2 id="demo-title">一条差异，<br>能点回到原文。</h2>
+          <p>三屏界面由 HTML / CSS 直接绘制，不加载截图。点左侧切换；点带 <span aria-hidden="true">≠</span> 的差异行展开原文依据；修改意见可以当场采纳或驳回。所有数值均为构造样例。</p>
+        </div>
+      </div>
+
+      <div class="app" aria-label="meta-coding 界面演示">
+        <div class="app__bar">
+          <div class="app__brand"><span class="app__mark" aria-hidden="true">M</span> meta-coding</div>
+          <div class="app__crumb">runs / 2026-11-19 / <b>0417</b></div>
+          <div class="app__host"><span class="sq" aria-hidden="true"></span> 127.0.0.1:8765</div>
+        </div>
+
+        <div class="app__body">
+          <nav class="app__nav" role="tablist" aria-label="演示界面切换" aria-orientation="vertical">
+            <p class="app__navlabel">工作台</p>
+            <button class="app__tab" type="button" role="tab" id="tab-rules" aria-controls="screen-rules" aria-selected="true" tabindex="0">
+              <span>规则包</span><span class="app__count">28</span>
+            </button>
+            <button class="app__tab" type="button" role="tab" id="tab-results" aria-controls="screen-results" aria-selected="false" tabindex="-1">
+              <span>结果对照</span><span class="app__count">37</span>
+            </button>
+            <button class="app__tab" type="button" role="tab" id="tab-advice" aria-controls="screen-advice" aria-selected="false" tabindex="-1">
+              <span>修改意见</span><span class="app__count">4</span>
+            </button>
+
+            <div class="app__run">
+              <p class="app__run-label">Run 0417</p>
+              <dl>
+                <div class="app__run-row"><dt>规则包</dt><dd>meta-wbi-v1</dd></div>
+                <div class="app__run-row"><dt>论文</dt><dd>21</dd></div>
+                <div class="app__run-row"><dt>成本</dt><dd>$0.00</dd></div>
+              </dl>
+              <div class="app__progress" aria-hidden="true"><span></span></div>
+              <div class="app__progress-label"><span>4 / 5 steps</span><span>G2 off</span></div>
+            </div>
+
+            <div class="app__sidefoot">
+              <span>Local only</span>
+              <span>Keys unset</span>
+            </div>
+          </nav>
+
+          <div class="app__main">
+            <!-- SCREEN 1: RULES -->
+            <section class="screen" id="screen-rules" role="tabpanel" aria-labelledby="tab-rules" tabindex="0">
+              <div class="screen__head">
+                <div>
+                  <p class="screen__kicker">Rule pack / meta-wbi-v1</p>
+                  <h3>规则包 · 字段表</h3>
+                </div>
+                <div class="screen__head-right">
+                  <span class="pill pill--solid">已确认</span>
+                  <span class="screen__stamp">pack_hash 7f3a…c19e</span>
+                </div>
+              </div>
+
+              <dl class="screen__stats">
+                <div class="screen__stat"><dt>字段</dt><dd>28</dd></div>
+                <div class="screen__stat"><dt>分表决策</dt><dd>5</dd></div>
+                <div class="screen__stat"><dt>人工修改</dt><dd>3<span class="unit">处</span></dd></div>
+                <div class="screen__stat"><dt>来源文档</dt><dd class="is-small">CODING_PLAN.md</dd></div>
+              </dl>
+
+              <p class="screen__note"><span class="sq sq--accent" aria-hidden="true"></span><span>每个字段必须带原文出处。无出处的字段会被丢弃，并记入 <code>gaps.md</code>；确认后任何字段修改都会被 400 拒绝。</span></p>
+              <p class="mobile-hint">横向滑动表格查看原文出处与状态 →</p>
+
+              <div class="table-scroll" tabindex="0" aria-label="规则包字段表，可滚动">
+                <table class="dtable dtable--rules">
+                  <caption class="sr-only">规则包字段表示例（演示数据）</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">列</th>
+                      <th scope="col">字段</th>
+                      <th scope="col">类型</th>
+                      <th scope="col">缺失规则</th>
+                      <th scope="col">原文出处</th>
+                      <th scope="col">状态</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="mono" style="color:var(--faint)">P</td>
+                      <td><span class="fname">sample_n</span></td>
+                      <td class="c-val">integer</td>
+                      <td class="c-val">missing_code</td>
+                      <td><span class="c-page">§5.4 · p.12</span><span class="advice__quote" style="display:block;margin-left:0;font-size:10px">“与该行目标均值对应的有效人数”</span></td>
+                      <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已核对</span></td>
+                    </tr>
+                    <tr>
+                      <td class="mono" style="color:var(--faint)">Q</td>
+                      <td><span class="fname">mean_age</span></td>
+                      <td class="c-val">number_or_missing</td>
+                      <td class="c-val">missing_code</td>
+                      <td><span class="c-page">§5.4 · p.12</span><span class="advice__quote" style="display:block;margin-left:0;font-size:10px">“报告均值年龄；未报告不反推”</span></td>
+                      <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已核对</span></td>
+                    </tr>
+                    <tr>
+                      <td class="mono" style="color:var(--faint)">S</td>
+                      <td><span class="fname">age_group</span></td>
+                      <td class="c-val">enum_or_missing</td>
+                      <td class="c-val">missing_code</td>
+                      <td><span class="c-page">§5.4 · p.13</span><span class="advice__quote" style="display:block;margin-left:0;font-size:10px">“11≤a≤15 / 15&lt;a&lt;18 / 18≤a≤25 / a&gt;25”</span></td>
+                      <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已核对</span></td>
+                    </tr>
+                    <tr>
+                      <td class="mono" style="color:var(--faint)">W</td>
+                      <td><span class="fname">measure_name</span></td>
+                      <td class="c-val">string</td>
+                      <td class="c-val">never_missing_when_coded</td>
+                      <td><span class="c-page">§5.5 · p.14</span><span class="advice__quote" style="display:block;margin-left:0;font-size:10px">“WBIS / WBIS-M / WBIS-2F / WSSQ；语言不混入名称”</span></td>
+                      <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已核对</span></td>
+                    </tr>
+                    <tr class="is-diff" style="background:var(--accent-wash)">
+                      <td class="mono" style="color:var(--accent)">AE</td>
+                      <td><span class="fname">scale_mean</span></td>
+                      <td class="c-val">number_or_missing</td>
+                      <td class="c-val">missing_code_total_row_only</td>
+                      <td><span class="c-page">§5.6 · p.16</span><span class="advice__quote" style="display:block;margin-left:0;font-size:10px">“条目均分；性别行缺 mean 则不编码该行”</span></td>
+                      <td><span class="pill pill--major">人工改</span></td>
+                    </tr>
+                    <tr>
+                      <td class="mono" style="color:var(--faint)">AF</td>
+                      <td><span class="fname">scale_sd</span></td>
+                      <td class="c-val">number_or_missing</td>
+                      <td class="c-val">missing_code_total_row_only</td>
+                      <td><span class="c-page">§5.6 · p.16</span><span class="advice__quote" style="display:block;margin-left:0;font-size:10px">“与 scale_mean 同尺度（同为条目均分）”</span></td>
+                      <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已核对</span></td>
+                    </tr>
+                    <tr>
+                      <td class="mono" style="color:var(--faint)">AC</td>
+                      <td><span class="fname">direction</span></td>
+                      <td class="c-val">enum</td>
+                      <td class="c-val">missing_code</td>
+                      <td><span class="c-page">§5.5 · p.15</span><span class="advice__quote" style="display:block;margin-left:0;font-size:10px">“1 = higher is more internalization；2 = reverse”</span></td>
+                      <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已核对</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="screen__foot">
+                <span>status = confirmed · source sha256 fa7c7500…921e4</span>
+                <span>7 / 28 rows</span>
+              </div>
+            </section>
+
+            <!-- SCREEN 2: RESULTS -->
+            <section class="screen" id="screen-results" role="tabpanel" aria-labelledby="tab-results" tabindex="0" hidden>
+              <div class="screen__head">
+                <div>
+                  <p class="screen__kicker">Run 0417 / diff cells</p>
+                  <h3>结果 · A / B / 建议值</h3>
+                </div>
+                <div class="screen__head-right">
+                  <span class="pill pill--accent">比对完成</span>
+                  <span class="screen__stamp">2026-11-19 09:41</span>
+                </div>
+              </div>
+
+              <dl class="screen__stats">
+                <div class="screen__stat"><dt>论文</dt><dd>21</dd></div>
+                <div class="screen__stat"><dt>字段格</dt><dd>588</dd></div>
+                <div class="screen__stat"><dt>差异</dt><dd>37</dd></div>
+                <div class="screen__stat"><dt>Critical</dt><dd>3</dd></div>
+              </dl>
+
+              <div class="filters" id="result-filters" role="group" aria-label="筛选结果">
+                <button class="chip" type="button" data-filter="all" aria-pressed="true">全部 <span>11</span></button>
+                <button class="chip" type="button" data-filter="diff" aria-pressed="false">仅差异 <span>6</span></button>
+                <button class="chip" type="button" data-filter="critical" aria-pressed="false">Critical <span>3</span></button>
+                <span class="filters__hint">点差异行展开原文依据</span>
+              </div>
+              <p class="mobile-hint">横向滑动表格查看建议值、页码与严重度 →</p>
+
+              <div class="table-scroll" tabindex="0" aria-label="结果对照表，可滚动">
+                <table class="dtable dtable--results" id="result-table">
+                  <caption class="sr-only">A / B / 建议值三栏对照（演示数据）</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">字段</th>
+                      <th scope="col">A 值</th>
+                      <th scope="col">B 值</th>
+                      <th scope="col">建议值</th>
+                      <th scope="col">页码</th>
+                      <th scope="col">严重度</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    <tr class="grp-row"><td colspan="6">6047.pdf · WBIS · Overall sample · total</td></tr>
+                    <tr class="cell-row is-diff" data-diff="1" data-sev="major" data-evidence="ev-sample-n" aria-expanded="false" tabindex="0">
+                      <td><span class="cell-mark" aria-hidden="true">≠</span><span class="fname">sample_n</span></td>
+                      <td class="c-val">412</td>
+                      <td class="c-val">421</td>
+                      <td class="c-val is-suggest">412</td>
+                      <td class="c-page">p.4</td>
+                      <td class="c-sev"><span class="pill pill--major">major</span></td>
+                    </tr>
+                    <tr class="evidence-row" id="ev-sample-n" hidden>
+                      <td colspan="6">
+                        <div class="evidence">
+                          <div class="evidence__col">
+                            <span class="e-label">A · p.4</span>
+                            <p class="e-value">412</p>
+                            <blockquote>「N = 412 for the total sample.」</blockquote>
+                          </div>
+                          <div class="evidence__col">
+                            <span class="e-label">B · p.4</span>
+                            <p class="e-value">421</p>
+                            <blockquote>「N = 421 after excluding 9 invalid responses.」</blockquote>
+                          </div>
+                          <div class="evidence__col evidence__col--ruling">
+                            <span class="e-label">裁决 · 0.88</span>
+                            <p>B 采用了排除后的分析样本；规则 §5.4 要求编码与目标均值对应的有效人数，取 412。</p>
+                            <span class="e-type">numeric_conflict</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr class="cell-row" data-diff="0" data-sev="">
+                      <td><span class="cell-mark" aria-hidden="true">=</span><span class="fname">mean_age</span></td>
+                      <td class="c-val">20.4</td>
+                      <td class="c-val">20.4</td>
+                      <td class="c-val is-suggest">20.4</td>
+                      <td class="c-page">p.4</td>
+                      <td class="c-sev"><span class="c-page">—</span></td>
+                    </tr>
+                    <tr class="cell-row" data-diff="0" data-sev="">
+                      <td><span class="cell-mark" aria-hidden="true">=</span><span class="fname">age_group</span></td>
+                      <td class="c-val">3</td>
+                      <td class="c-val">3</td>
+                      <td class="c-val is-suggest">3</td>
+                      <td class="c-page">p.5</td>
+                      <td class="c-sev"><span class="c-page">—</span></td>
+                    </tr>
+                    <tr class="cell-row is-diff" data-diff="1" data-sev="major" data-evidence="ev-measure" aria-expanded="false" tabindex="0">
+                      <td><span class="cell-mark" aria-hidden="true">≠</span><span class="fname">measure_name</span></td>
+                      <td class="c-val">WBIS</td>
+                      <td class="c-val">WBIS-M</td>
+                      <td class="c-val is-suggest">WBIS</td>
+                      <td class="c-page">p.6</td>
+                      <td class="c-sev"><span class="pill pill--major">major</span></td>
+                    </tr>
+                    <tr class="evidence-row" id="ev-measure" hidden>
+                      <td colspan="6">
+                        <div class="evidence">
+                          <div class="evidence__col">
+                            <span class="e-label">A · p.6</span>
+                            <p class="e-value">WBIS</p>
+                            <blockquote>「The WBIS was administered in the full sample.」</blockquote>
+                          </div>
+                          <div class="evidence__col">
+                            <span class="e-label">B · p.6</span>
+                            <p class="e-value">WBIS-M</p>
+                            <blockquote>「Measures: WBIS-M, WBIS-2F.」</blockquote>
+                          </div>
+                          <div class="evidence__col evidence__col--ruling">
+                            <span class="e-label">裁决 · 0.81</span>
+                            <p>B 将相邻缩写并入；原文 Methods 使用的是 WBIS，不是 modified 版本。</p>
+                            <span class="e-type">enum_conflict</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr class="cell-row is-diff" data-diff="1" data-sev="critical" data-evidence="ev-scale-mean" aria-expanded="false" tabindex="0">
+                      <td><span class="cell-mark" aria-hidden="true">≠</span><span class="fname">scale_mean</span></td>
+                      <td class="c-val">3.54</td>
+                      <td class="c-val">3.45</td>
+                      <td class="c-val is-suggest">3.54</td>
+                      <td class="c-page">p.7</td>
+                      <td class="c-sev"><span class="pill pill--critical">critical</span></td>
+                    </tr>
+                    <tr class="evidence-row" id="ev-scale-mean" hidden>
+                      <td colspan="6">
+                        <div class="evidence">
+                          <div class="evidence__col">
+                            <span class="e-label">A · p.7</span>
+                            <p class="e-value">3.54</p>
+                            <blockquote>「M = 3.54, SD = 1.69」— Table 2, Total</blockquote>
+                          </div>
+                          <div class="evidence__col">
+                            <span class="e-label">B · p.7</span>
+                            <p class="e-value">3.45</p>
+                            <blockquote>「M = 3.45, SD = 1.72」— Table 2, Female</blockquote>
+                          </div>
+                          <div class="evidence__col evidence__col--ruling">
+                            <span class="e-label">裁决 · 0.92</span>
+                            <p>B 取到相邻列（Female）；A 与 Table 2 的 Total 行一致。</p>
+                            <span class="e-type">numeric_conflict</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr class="cell-row" data-diff="0" data-sev="">
+                      <td><span class="cell-mark" aria-hidden="true">=</span><span class="fname">scale_sd</span></td>
+                      <td class="c-val">1.69</td>
+                      <td class="c-val">1.69</td>
+                      <td class="c-val is-suggest">1.69</td>
+                      <td class="c-page">p.7</td>
+                      <td class="c-sev"><span class="c-page">—</span></td>
+                    </tr>
+                  </tbody>
+
+                  <tbody>
+                    <tr class="grp-row"><td colspan="6">6112.pdf · WBIS · Female · total</td></tr>
+                    <tr class="cell-row" data-diff="0" data-sev="">
+                      <td><span class="cell-mark" aria-hidden="true">=</span><span class="fname">sample_n</span></td>
+                      <td class="c-val">208</td>
+                      <td class="c-val">208</td>
+                      <td class="c-val is-suggest">208</td>
+                      <td class="c-page">p.5</td>
+                      <td class="c-sev"><span class="c-page">—</span></td>
+                    </tr>
+                    <tr class="cell-row" data-diff="0" data-sev="">
+                      <td><span class="cell-mark" aria-hidden="true">=</span><span class="fname">scale_mean</span></td>
+                      <td class="c-val">3.21</td>
+                      <td class="c-val">3.21</td>
+                      <td class="c-val is-suggest">3.21</td>
+                      <td class="c-page">p.9</td>
+                      <td class="c-sev"><span class="c-page">—</span></td>
+                    </tr>
+                    <tr class="cell-row is-diff" data-diff="1" data-sev="minor" data-evidence="ev-country" aria-expanded="false" tabindex="0">
+                      <td><span class="cell-mark" aria-hidden="true">≠</span><span class="fname">country</span></td>
+                      <td class="c-val">US</td>
+                      <td class="c-val">USA</td>
+                      <td class="c-val is-suggest">US</td>
+                      <td class="c-page">p.2</td>
+                      <td class="c-sev"><span class="pill pill--minor">minor</span></td>
+                    </tr>
+                    <tr class="evidence-row" id="ev-country" hidden>
+                      <td colspan="6">
+                        <div class="evidence">
+                          <div class="evidence__col">
+                            <span class="e-label">A · p.2</span>
+                            <p class="e-value">US</p>
+                            <blockquote>「Participants were recruited in the United States.」</blockquote>
+                          </div>
+                          <div class="evidence__col">
+                            <span class="e-label">B · p.2</span>
+                            <p class="e-value">USA</p>
+                            <blockquote>「U.S. sample; see Table 1.」</blockquote>
+                          </div>
+                          <div class="evidence__col evidence__col--ruling">
+                            <span class="e-label">裁决 · 0.99</span>
+                            <p>规范化表要求 ISO 式 US；B 填了别名。按 country 归一化规则映射，不构成实质分歧。</p>
+                            <span class="e-type">normalization</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr class="cell-row is-diff" data-diff="1" data-sev="critical" data-evidence="ev-direction" aria-expanded="false" tabindex="0">
+                      <td><span class="cell-mark" aria-hidden="true">≠</span><span class="fname">direction</span></td>
+                      <td class="c-val">1</td>
+                      <td class="c-val">2</td>
+                      <td class="c-val is-suggest">1</td>
+                      <td class="c-page">p.9</td>
+                      <td class="c-sev"><span class="pill pill--critical">critical</span></td>
+                    </tr>
+                    <tr class="evidence-row" id="ev-direction" hidden>
+                      <td colspan="6">
+                        <div class="evidence">
+                          <div class="evidence__col">
+                            <span class="e-label">A · p.9</span>
+                            <p class="e-value">1</p>
+                            <blockquote>「Higher scores indicate greater internalization.」</blockquote>
+                          </div>
+                          <div class="evidence__col">
+                            <span class="e-label">B · p.9</span>
+                            <p class="e-value">2</p>
+                            <blockquote>「Three items are reverse-scored.」</blockquote>
+                          </div>
+                          <div class="evidence__col evidence__col--ruling">
+                            <span class="e-label">裁决 · 0.94</span>
+                            <p>反向题在计分前已重编码；整份量表方向仍为高分=更高内化。B 把局部反向误当成整体方向。</p>
+                            <span class="e-type">enum_conflict</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+
+                  <tbody>
+                    <tr class="grp-row"><td colspan="6">6188.pdf · WSSQ · Overall sample · total</td></tr>
+                    <tr class="cell-row is-diff" data-diff="1" data-sev="critical" data-evidence="ev-total" aria-expanded="false" tabindex="0">
+                      <td><span class="cell-mark" aria-hidden="true">≠</span><span class="fname">scale_total</span></td>
+                      <td class="c-val is-missing">—</td>
+                      <td class="c-val">42.10</td>
+                      <td class="c-val is-suggest">42.10</td>
+                      <td class="c-page">p.11</td>
+                      <td class="c-sev"><span class="pill pill--critical">critical</span></td>
+                    </tr>
+                    <tr class="evidence-row" id="ev-total" hidden>
+                      <td colspan="6">
+                        <div class="evidence">
+                          <div class="evidence__col">
+                            <span class="e-label">A · no value</span>
+                            <p class="e-value">—</p>
+                            <blockquote>未编码。A 将总分视为「仅报告均值尺度」，跳过 Table 3。</blockquote>
+                          </div>
+                          <div class="evidence__col">
+                            <span class="e-label">B · p.11</span>
+                            <p class="e-value">42.10</p>
+                            <blockquote>「Total score: M = 42.10, SD = 8.34.」— Table 3</blockquote>
+                          </div>
+                          <div class="evidence__col evidence__col--ruling">
+                            <span class="e-label">裁决 · 0.90</span>
+                            <p>原文明确报告总分；规则允许在报告时填写。建议补录 42.10，而不是保留空值。</p>
+                            <span class="e-type">missing_vs_value</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="screen__foot">
+                <span id="result-shown">显示 11 / 588 格</span>
+                <span>点 ≠ 行展开 A / B / 裁决依据</span>
+              </div>
+            </section>
+
+            <!-- SCREEN 3: ADVICE -->
+            <section class="screen" id="screen-advice" role="tabpanel" aria-labelledby="tab-advice" tabindex="0" hidden>
+              <div class="screen__head">
+                <div>
+                  <p class="screen__kicker">Run 0417 / revisions.md</p>
+                  <h3>修改意见</h3>
+                </div>
+                <div class="screen__head-right">
+                  <span class="pill pill--accent" id="advice-progress">已处理 0 / 4</span>
+                  <span class="screen__stamp">逐条采纳或驳回</span>
+                </div>
+              </div>
+
+              <dl class="screen__stats">
+                <div class="screen__stat"><dt>建议</dt><dd>4</dd></div>
+                <div class="screen__stat"><dt>Critical</dt><dd>2</dd></div>
+                <div class="screen__stat"><dt>已处理</dt><dd id="advice-done">0</dd></div>
+                <div class="screen__stat"><dt>写回</dt><dd class="is-small">decisions.json</dd></div>
+              </dl>
+
+              <p class="screen__note"><span class="sq sq--accent" aria-hidden="true"></span><span>每条建议都带原文页码与理由。采纳/驳回会写入 <code>provenance.jsonl</code>，不是只在页面上变色。</span></p>
+
+              <ol class="advice-list" id="advice-list">
+                <li class="advice" data-decision="">
+                  <span class="advice__no">01</span>
+                  <div class="advice__main">
+                    <p class="advice__meta">6047.pdf · WBIS · Overall sample <span class="pill pill--critical">critical</span></p>
+                    <h4><span class="fname">scale_mean</span> <span class="advice__from">3.45</span> <span class="advice__arrow" aria-hidden="true">→</span> <span class="advice__to">3.54</span></h4>
+                    <p class="advice__why">B 取到相邻列；A 与 Table 2 的 Total 行一致。<span class="advice__quote">「M = 3.54, SD = 1.69」· p.7</span></p>
+                  </div>
+                  <div class="advice__act">
+                    <span class="advice__state" data-state>待处理</span>
+                    <div class="advice__buttons">
+                      <button class="mini" type="button" data-decision="accepted" aria-pressed="false">采纳</button>
+                      <button class="mini" type="button" data-decision="rejected" aria-pressed="false">驳回</button>
+                    </div>
+                  </div>
+                </li>
+
+                <li class="advice" data-decision="">
+                  <span class="advice__no">02</span>
+                  <div class="advice__main">
+                    <p class="advice__meta">6188.pdf · WSSQ · Overall sample <span class="pill pill--critical">critical</span></p>
+                    <h4><span class="fname">scale_total</span> <span class="advice__from">—</span> <span class="advice__arrow" aria-hidden="true">→</span> <span class="advice__to">42.10</span></h4>
+                    <p class="advice__why">A 未编码；B 从 Table 3 取到总分，原文明确报告。<span class="advice__quote">「Total score: M = 42.10」· p.11</span></p>
+                  </div>
+                  <div class="advice__act">
+                    <span class="advice__state" data-state>待处理</span>
+                    <div class="advice__buttons">
+                      <button class="mini" type="button" data-decision="accepted" aria-pressed="false">采纳</button>
+                      <button class="mini" type="button" data-decision="rejected" aria-pressed="false">驳回</button>
+                    </div>
+                  </div>
+                </li>
+
+                <li class="advice" data-decision="">
+                  <span class="advice__no">03</span>
+                  <div class="advice__main">
+                    <p class="advice__meta">6047.pdf · WBIS · Overall sample <span class="pill pill--major">major</span></p>
+                    <h4><span class="fname">sample_n</span> <span class="advice__from">421</span> <span class="advice__arrow" aria-hidden="true">→</span> <span class="advice__to">412</span></h4>
+                    <p class="advice__why">B 计入排除前样本；目标均值对应 412 名有效回答者。<span class="advice__quote">「N = 412」· p.4</span></p>
+                  </div>
+                  <div class="advice__act">
+                    <span class="advice__state" data-state>待处理</span>
+                    <div class="advice__buttons">
+                      <button class="mini" type="button" data-decision="accepted" aria-pressed="false">采纳</button>
+                      <button class="mini" type="button" data-decision="rejected" aria-pressed="false">驳回</button>
+                    </div>
+                  </div>
+                </li>
+
+                <li class="advice" data-decision="">
+                  <span class="advice__no">04</span>
+                  <div class="advice__main">
+                    <p class="advice__meta">6112.pdf · WBIS · Female <span class="pill pill--minor">minor</span></p>
+                    <h4><span class="fname">country</span> <span class="advice__from">USA</span> <span class="advice__arrow" aria-hidden="true">→</span> <span class="advice__to">US</span></h4>
+                    <p class="advice__why">别名归一化：US / USA / U.S. 映射到同一代码。<span class="advice__quote">§5.2 · p.2</span></p>
+                  </div>
+                  <div class="advice__act">
+                    <span class="advice__state" data-state>待处理</span>
+                    <div class="advice__buttons">
+                      <button class="mini" type="button" data-decision="accepted" aria-pressed="false">采纳</button>
+                      <button class="mini" type="button" data-decision="rejected" aria-pressed="false">驳回</button>
+                    </div>
+                  </div>
+                </li>
+              </ol>
+
+              <div class="screen__foot">
+                <span>决定写回 decisions.json · provenance.jsonl</span>
+                <span>导出清单含 sha256</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo__foot">
+        <span class="sq sq--accent" aria-hidden="true"></span>
+        <p><strong>演示数据，非真实研究结果。</strong>页码、数值、引文与理由均为构造样例，仅用于展示界面形状；字段名与状态取自当前规则包的字段清单。</p>
+        <span class="mono">Demo UI / static</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= STATUS ================= -->
+  <section class="section" id="status" aria-labelledby="status-title">
+    <div class="shell section__grid">
+      <div class="section__label">
+        <span class="sec-no">04</span>
+        <span class="sec-kicker">Status</span>
+      </div>
+      <div class="section__body">
+        <h2 id="status-title">哪些能跑，<br>哪些还缺一把 key。</h2>
+        <p class="lead">这份状态按仓库当前提交如实标注。最后一行是本页的浏览器试用，只做单次提取，和完整流水线不是一回事。没有 API key 时，裁决与端到端真实编码不会发生，也不会用测试数据代替结果。</p>
+
+        <div class="status-legend">
+          <span><span class="sq" aria-hidden="true"></span>已实现</span>
+          <span><span class="sq sq--hollow" aria-hidden="true"></span>待 API key</span>
+          <span><span class="sq sq--accent" aria-hidden="true"></span>可试用 · 单次提取</span>
+        </div>
+
+        <div class="table-scroll table-scroll--x" tabindex="0" aria-label="实现状态表，可水平滚动">
+          <table class="status-table">
+            <caption class="sr-only">能力与实现状态</caption>
+            <thead>
+              <tr><th scope="col">能力</th><th scope="col">说明</th><th scope="col">状态</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>PDF 摄取 · 表格抽取 · 页码锚定</td>
+                <td><span class="detail">packet 哈希；21 篇实测</span></td>
+                <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已实现</span></td>
+              </tr>
+              <tr>
+                <td>规则文档 → 字段表 → Schema → 模板契约</td>
+                <td><span class="detail">含人工确认环节</span></td>
+                <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已实现</span></td>
+              </tr>
+              <tr>
+                <td>双盲编码（A / B 独立进程）</td>
+                <td><span class="detail">提示词逐字节一致；<code>--dry-run</code> 可验证</span></td>
+                <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已实现</span></td>
+              </tr>
+              <tr>
+                <td>V01–V50 结构与口径校验</td>
+                <td><span class="detail">每条有「破坏 → 必须命中」用例</span></td>
+                <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已实现</span></td>
+              </tr>
+              <tr>
+                <td>记录 → 工作簿 → 共识工作簿 → 分析长表</td>
+                <td><span class="detail">合成数据全链路</span></td>
+                <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已实现</span></td>
+              </tr>
+              <tr>
+                <td>块对齐 · 字段比对 · 分歧分类</td>
+                <td><span class="detail">确定性，不调用模型</span></td>
+                <td><span class="state state--done"><span class="sq" aria-hidden="true"></span>已实现</span></td>
+              </tr>
+              <tr>
+                <td>第三方裁决</td>
+                <td><span class="detail">代码就绪，未跑过真实调用</span></td>
+                <td><span class="state state--pending"><span class="sq sq--hollow" aria-hidden="true"></span>待 API key</span></td>
+              </tr>
+              <tr>
+                <td>端到端真实编码</td>
+                <td><span class="detail">仓库中尚无真实结果</span></td>
+                <td><span class="state state--pending"><span class="sq sq--hollow" aria-hidden="true"></span>待 API key</span></td>
+              </tr>
+              <tr>
+                <td>浏览器单次提取（本页试用）</td>
+                <td><span class="detail">仅 DeepSeek · 无 PDF / 比对 / 裁决</span></td>
+                <td><span class="state state--trial"><span class="sq sq--accent" aria-hidden="true"></span>可试用</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="status-note"><strong>没有 key 之前，仓库里不存在任何真实论文的编码结果。</strong>用合成数据测过全链路，但不会把测试数据当成研究结论。</p>
+
+        <div class="limits">
+          <div class="limits__head">
+            <h3>已知边界</h3>
+            <span>不假装解决</span>
+          </div>
+          <div class="limits__grid">
+            <article class="limit">
+              <span class="limit__no">01</span>
+              <div>
+                <h4>共享输入风险</h4>
+                <p>A / B 读同一份 packet。摄取阶段的表格错位会被两个模型同时继承，分歧率会低估真实错误率。</p>
+              </div>
+            </article>
+            <article class="limit">
+              <span class="limit__no">02</span>
+              <div>
+                <h4>模型版本漂移</h4>
+                <p>厂商静默升级会让「同配置重跑」出现差异。以快照哈希与偏差登记处理，不做「再跑一次取平均」。</p>
+              </div>
+            </article>
+            <article class="limit">
+              <span class="limit__no">03</span>
+              <div>
+                <h4>裁决者自身误差</h4>
+                <p>裁决模型也是 LLM，它给出的 confidence 未校准。建议值仍需人核对原文。</p>
+              </div>
+            </article>
+            <article class="limit">
+              <span class="limit__no">04</span>
+              <div>
+                <h4>规则解析非确定性</h4>
+                <p>规则文档 → 字段表依赖模型，必须人工过一遍。无出处的字段直接丢弃，并记入 gaps。</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= TRY ================= -->
+  <section class="section section--try" id="try" aria-labelledby="try-title">
+    <div class="shell">
+      <div class="demo__head try__head">
+        <div class="section__label">
+          <span class="sec-no">05</span>
+          <span class="sec-kicker">Try it / direct</span>
+        </div>
+        <div>
+          <h2 id="try-title">先试一次提取，<br>再决定要不要跑全流程。</h2>
+          <p>把你的 key 直接交给 DeepSeek，从一段方法文字里抽出结构化字段。它只证明「一次提取」能不能跑通，不证明双模型、比对或裁决。</p>
+        </div>
+      </div>
+
+      <div class="try__grid">
+        <div class="try__form">
+          <form id="trial-form" novalidate>
+            <noscript><p class="field__hint">试用需要 JavaScript；没有脚本时，页面其余部分仍可正常阅读。</p></noscript>
+            <div class="trial-row">
+              <div class="field">
+                <label for="trial-provider">Provider</label>
+                <div class="select-wrap">
+                  <select id="trial-provider">
+                    <option value="deepseek">DeepSeek · chat</option>
+                  </select>
+                </div>
+                <p class="field__hint">只列已实测 CORS 可用的服务。</p>
+              </div>
+              <div class="field">
+                <label for="trial-key">DeepSeek API key</label>
+                <input type="password" id="trial-key" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-…" aria-describedby="trial-key-hint">
+                <p class="field__hint" id="trial-key-hint">只存在浏览器内存 · 刷新即失 · 不写 localStorage / sessionStorage</p>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field__label-row">
+                <label for="trial-text">论文方法段落</label>
+                <span class="mono">Example · fabricated</span>
+              </div>
+              <textarea id="trial-text" rows="7" spellcheck="false">Participants were recruited from two university campuses in eastern China between March and June 2023. A total of 412 undergraduate students (58.3% female; mean age = 20.4 years, SD = 1.7) completed the Web-Based Internalization Scale (WBIS). Responses were collected anonymously through an online questionnaire. The WBIS contains 16 items rated on a 7-point Likert scale (1 = not at all, 7 = very much). Higher scores indicate greater internalization. Three items were reverse-scored before averaging. The total sample mean was 3.54 (SD = 1.69).</textarea>
+              <p class="field__hint">示例文本为构造内容，可替换成你自己的段落。本试用不解析 PDF，也不读取页码。</p>
+            </div>
+
+            <div class="trial-actions">
+              <button class="btn btn--fill" type="submit" id="trial-submit" disabled>
+                <span id="trial-submit-label">发送单次提取</span> <span aria-hidden="true">→</span>
+              </button>
+              <button class="btn btn--line" type="button" id="trial-clear">清空 key 与结果</button>
+              <span class="trial-status" id="trial-hint" aria-live="polite">填入 key 后可发送</span>
+            </div>
+          </form>
+
+          <details class="prompt-details">
+            <summary>查看提示词结构（段落运行时填入）</summary>
+            <pre id="prompt-preview"></pre>
+          </details>
+        </div>
+
+        <aside class="try__notes" aria-label="试用边界">
+          <div class="try-note">
+            <span class="mono">Key path</span>
+            <p>浏览器 → api.deepseek.com。没有中转服务器，没有请求日志，不写 localStorage / sessionStorage。</p>
+          </div>
+          <div class="try-note">
+            <span class="mono">Scope</span>
+            <p>单次提取：一段文字 → 一个 JSON。演示用 10 字段子集；不包含双模型独立编码、逐字段比对、第三方裁决或 manifest。</p>
+          </div>
+          <div class="try-note">
+            <span class="mono">CORS</span>
+            <p>DeepSeek 已实测回显 Origin；Anthropic 无 CORS 头，浏览器直连会被拦；Google 未确认，不列入下拉。</p>
+          </div>
+        </aside>
+      </div>
+
+      <div class="trial-output" aria-label="试用返回结果">
+        <div class="trial-output__head">
+          <span class="mono">Response / JSON</span>
+          <span class="mono" id="trial-meta" aria-live="polite">等待发送</span>
+        </div>
+        <div class="trial-error" id="trial-error" role="alert" hidden></div>
+        <p class="trial-empty" id="trial-empty">尚未发送。成功返回的 JSON 会显示在这里。</p>
+        <pre class="trial-code" id="trial-code" hidden><code id="trial-json"></code></pre>
+      </div>
+
+      <p class="trial-disclaimer">输出由模型实时生成，可能有错，请对照原文核对。本页不保存 key；但浏览器扩展仍可能读取页面内容，请使用可信环境，也不要把 key 贴在截图或聊天里。</p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="shell">
+    <div class="foot__top">
+      <p class="foot__line">规则是输入。<br>证据是输出。</p>
+      <div class="foot__links">
+        <a href="https://github.com/asyazhao/meta-analysis-dual-coder">GitHub 仓库 ↗</a>
+        <a href="https://github.com/asyazhao/meta-analysis-dual-coder/blob/main/docs/RULE_PACK_SPEC.md">规则包契约 ↗</a>
+        <a href="https://github.com/asyazhao/meta-analysis-dual-coder/blob/main/docs/PROTOCOL.md">研究协议 ↗</a>
+        <a href="https://github.com/asyazhao/meta-analysis-dual-coder/blob/main/LICENSE">MIT 许可 ↗</a>
+      </div>
+    </div>
+
+    <div class="foot__notice">
+      <span class="sq sq--accent" aria-hidden="true"></span>
+      <strong>演示数据，非真实研究结果。</strong>
+      <span>页面中的示例编码数据为构造内容；只有你在试用区主动发送时，浏览器才会直连 DeepSeek。不包含论文全文或编码结果。</span>
+    </div>
+
+    <div class="foot__base">
+      <span>meta-coding · 2026</span>
+      <span>代码 MIT · 文档 CC BY 4.0</span>
+      <a href="#top">回到顶部 ↑</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---- app tabs ---- */
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('[role="tabpanel"]'));
+
+  function activateTab(tab, focus) {
+    if (!tab) return;
+    var target = tab.getAttribute('aria-controls');
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      t.tabIndex = on ? 0 : -1;
+    });
+    panels.forEach(function (p) {
+      var on = p.id === target;
+      p.hidden = !on;
+    });
+    if (focus) tab.focus();
+  }
+
+  tabs.forEach(function (tab, index) {
+    tab.addEventListener('click', function () { activateTab(tab, false); });
+    tab.addEventListener('keydown', function (event) {
+      var next = null;
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
+      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') next = tabs[(index - 1 + tabs.length) % tabs.length];
+      if (event.key === 'Home') next = tabs[0];
+      if (event.key === 'End') next = tabs[tabs.length - 1];
+      if (next) {
+        event.preventDefault();
+        activateTab(next, true);
+      }
+    });
+  });
+
+  /* ---- result filters ---- */
+  var resultTable = document.getElementById('result-table');
+  var filterBar = document.getElementById('result-filters');
+  var shownLabel = document.getElementById('result-shown');
+
+  function closeEvidence() {
+    if (!resultTable) return;
+    Array.prototype.forEach.call(resultTable.querySelectorAll('tr.evidence-row'), function (row) {
+      row.hidden = true;
+    });
+    Array.prototype.forEach.call(resultTable.querySelectorAll('tr.cell-row[aria-expanded="true"]'), function (row) {
+      row.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function applyFilter(mode) {
+    if (!resultTable) return;
+    closeEvidence();
+    var visible = 0;
+    Array.prototype.forEach.call(resultTable.querySelectorAll('tr.cell-row'), function (row) {
+      var show = mode === 'all'
+        || (mode === 'diff' && row.getAttribute('data-diff') === '1')
+        || (mode === 'critical' && row.getAttribute('data-sev') === 'critical');
+      row.hidden = !show;
+      if (show) visible += 1;
+    });
+    Array.prototype.forEach.call(resultTable.querySelectorAll('tbody'), function (body) {
+      var any = Array.prototype.some.call(body.querySelectorAll('tr.cell-row'), function (row) {
+        return !row.hidden;
+      });
+      body.hidden = !any;
+    });
+    if (shownLabel) shownLabel.textContent = '显示 ' + visible + ' / 588 格';
+  }
+
+  if (filterBar) {
+    filterBar.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-filter]');
+      if (!button) return;
+      Array.prototype.forEach.call(filterBar.querySelectorAll('[data-filter]'), function (chip) {
+        chip.setAttribute('aria-pressed', chip === button ? 'true' : 'false');
+      });
+      applyFilter(button.getAttribute('data-filter'));
+    });
+  }
+
+  /* ---- evidence rows ---- */
+  if (resultTable) {
+    Array.prototype.forEach.call(resultTable.querySelectorAll('tr.cell-row[data-evidence]'), function (row) {
+      function toggle() {
+        var id = row.getAttribute('data-evidence');
+        var detail = document.getElementById(id);
+        if (!detail) return;
+        var isOpen = row.getAttribute('aria-expanded') === 'true';
+        closeEvidence();
+        if (!isOpen) {
+          detail.hidden = false;
+          row.setAttribute('aria-expanded', 'true');
+        }
+      }
+      row.addEventListener('click', toggle);
+      row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggle();
+        }
+      });
+    });
+  }
+
+  /* ---- advice decisions ---- */
+  var adviceItems = Array.prototype.slice.call(document.querySelectorAll('#advice-list .advice'));
+  var adviceDone = document.getElementById('advice-done');
+  var adviceProgress = document.getElementById('advice-progress');
+  var stateCopy = { accepted: '已采纳', rejected: '已驳回', '': '待处理' };
+
+  function refreshAdvice() {
+    var done = 0;
+    adviceItems.forEach(function (item) {
+      var decision = item.getAttribute('data-decision') || '';
+      if (decision) done += 1;
+      var state = item.querySelector('[data-state]');
+      if (state) {
+        state.textContent = stateCopy[decision] || '待处理';
+        state.className = 'advice__state' + (decision ? ' is-' + decision : '');
+      }
+      item.classList.toggle('is-accepted', decision === 'accepted');
+      item.classList.toggle('is-rejected', decision === 'rejected');
+      Array.prototype.forEach.call(item.querySelectorAll('[data-decision]'), function (button) {
+        var on = button.getAttribute('data-decision') === decision;
+        button.classList.toggle('is-on', on);
+        button.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    });
+    if (adviceDone) adviceDone.textContent = String(done);
+    if (adviceProgress) adviceProgress.textContent = '已处理 ' + done + ' / ' + adviceItems.length;
+  }
+
+  adviceItems.forEach(function (item) {
+    Array.prototype.forEach.call(item.querySelectorAll('[data-decision]'), function (button) {
+      button.addEventListener('click', function () {
+        var value = button.getAttribute('data-decision');
+        var current = item.getAttribute('data-decision') || '';
+        item.setAttribute('data-decision', current === value ? '' : value);
+        refreshAdvice();
+      });
+    });
+  });
+  refreshAdvice();
+
+  /* ---- browser-only single extraction (DeepSeek direct) ---- */
+  var DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
+
+  var SYSTEM_PROMPT = [
+    'You are a careful meta-analysis coding assistant.',
+    'Return exactly one JSON object and nothing else. Do not use markdown fences.',
+    'Extract only values explicitly reported in the supplied paragraph.',
+    'Never infer, compute, or fill a value that is not written in the text.',
+    'For every field return an object: {"value": <value or null>, "quote": "<verbatim quote or null>"}.',
+    'Quotes must be verbatim from the paragraph and at most 25 words.',
+    'If a field is not reported, set both value and quote to null.',
+    'Do not invent page numbers. The input has no pages.'
+  ].join('\n');
+
+  var RULE_SUMMARY = [
+    'RULE PACK EXCERPT — meta-wbi-v1',
+    '',
+    'Fields to extract:',
+    '- sample_n: integer; participants contributing to the reported mean.',
+    '- mean_age: number with 2 decimals; mean age in years.',
+    '- sex_female_pct: number with 1 decimal; percentage female, only if reported.',
+    '- measure_name: string; exact instrument acronym.',
+    '- items_n: integer; number of scale items.',
+    '- response_scale_min: integer; lower bound of the response scale.',
+    '- response_scale_max: integer; upper bound of the response scale.',
+    '- direction: integer; 1 = higher scores mean more internalization, 2 = reverse.',
+    '- scale_mean: number with 2 decimals; reported mean of the scale.',
+    '- scale_sd: number with 2 decimals; reported SD of the scale.',
+    '',
+    'Output shape:',
+    '{"sample_n": {"value": 0, "quote": "..."}, ...}',
+    'Use null for any field that is not explicitly reported.'
+  ].join('\n');
+
+  var OUTPUT_CONTRACT = [
+    'Extract the fields from the paragraph above.',
+    'Return one JSON object only, with this shape:',
+    '{"field_name": {"value": <number|string|null>, "quote": "<verbatim quote or null>"}}',
+    'Use null when the paragraph does not report the field. Do not add commentary.'
+  ].join('\n');
+
+  var promptPreview = document.getElementById('prompt-preview');
+  if (promptPreview) {
+    promptPreview.textContent = '[SYSTEM]\n' + SYSTEM_PROMPT
+      + '\n\n[USER]\n' + RULE_SUMMARY
+      + '\n\n[PAPER METHODS PARAGRAPH]\n<your paragraph>'
+      + '\n\n' + OUTPUT_CONTRACT;
+  }
+
+  var trialForm = document.getElementById('trial-form');
+  var trialKey = document.getElementById('trial-key');
+  var trialText = document.getElementById('trial-text');
+  var trialSubmit = document.getElementById('trial-submit');
+  var trialSubmitLabel = document.getElementById('trial-submit-label');
+  var trialHint = document.getElementById('trial-hint');
+  var trialMeta = document.getElementById('trial-meta');
+  var trialError = document.getElementById('trial-error');
+  var trialEmpty = document.getElementById('trial-empty');
+  var trialCode = document.getElementById('trial-code');
+  var trialJson = document.getElementById('trial-json');
+  var trialClear = document.getElementById('trial-clear');
+  var trialSending = false;
+
+  function setTrialHint(text) {
+    if (trialHint) trialHint.textContent = text;
+  }
+
+  function updateTrialButton() {
+    if (!trialSubmit) return;
+    var hasKey = !!(trialKey && trialKey.value.trim().length > 0);
+    trialSubmit.disabled = trialSending || !hasKey;
+    if (trialSending) {
+      setTrialHint('发送中 · 请勿关闭页面');
+    } else if (!hasKey) {
+      setTrialHint('填入 key 后可发送');
+    } else {
+      setTrialHint('key 只在当前页面的内存中');
+    }
+  }
+
+  function resetTrialOutput() {
+    if (trialError) {
+      trialError.hidden = true;
+      trialError.replaceChildren();
+    }
+    if (trialCode) trialCode.hidden = true;
+    if (trialJson) trialJson.textContent = '';
+    if (trialEmpty) {
+      trialEmpty.hidden = false;
+      trialEmpty.textContent = '尚未发送。成功返回的 JSON 会显示在这里。';
+    }
+    if (trialMeta) trialMeta.textContent = '等待发送';
+  }
+
+  function showTrialError(title, detail, hint) {
+    if (!trialError) return;
+    trialError.replaceChildren();
+    var strong = document.createElement('strong');
+    strong.textContent = title;
+    trialError.appendChild(strong);
+    if (detail) {
+      var p = document.createElement('p');
+      p.textContent = detail;
+      trialError.appendChild(p);
+    }
+    if (hint) {
+      var q = document.createElement('p');
+      q.textContent = hint;
+      trialError.appendChild(q);
+    }
+    trialError.hidden = false;
+    if (trialEmpty) trialEmpty.hidden = true;
+    if (trialError.scrollIntoView) trialError.scrollIntoView({ block: 'nearest' });
+    if (trialMeta) trialMeta.textContent = '请求未完成';
+  }
+
+  function parseJsonContent(text) {
+    var cleaned = String(text || '').trim();
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    try {
+      return JSON.parse(cleaned);
+    } catch (firstError) {
+      var start = cleaned.indexOf('{');
+      var end = cleaned.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        try {
+          return JSON.parse(cleaned.slice(start, end + 1));
+        } catch (secondError) {
+          return null;
+        }
+      }
+      return null;
+    }
+  }
+
+  function httpErrorMessage(status, apiMessage) {
+    if (status === 401 || status === 403) {
+      return [
+        '密钥无效或没有权限（HTTP ' + status + '）',
+        apiMessage || 'DeepSeek 拒绝了这把 key。',
+        '确认 key 来自 platform.deepseek.com，且没有被撤销。不要把 key 发到聊天或截图里。'
+      ];
+    }
+    if (status === 402) {
+      return [
+        '账户额度不足（HTTP 402）',
+        apiMessage || '这把 key 所属账户没有可用余额。',
+        '充值或换一把有余额的 key 再试。'
+      ];
+    }
+    if (status === 429) {
+      return [
+        '请求被限流（HTTP 429）',
+        apiMessage || '短时间内请求过多。',
+        '等几十秒再试；不要连续点击发送。'
+      ];
+    }
+    if (status === 400) {
+      return [
+        '请求格式被拒绝（HTTP 400）',
+        apiMessage || 'DeepSeek 没有接受这次请求体。',
+        '检查模型名与 response_format 是否可用。'
+      ];
+    }
+    if (status >= 500) {
+      return [
+        'DeepSeek 服务端错误（HTTP ' + status + '）',
+        apiMessage || '服务暂时不可用。',
+        '稍后重试；你的 key 没有被发送到别处。'
+      ];
+    }
+    return [
+      '请求失败（HTTP ' + status + '）',
+      apiMessage || '服务返回了非 2xx 状态。',
+      '检查网络与 key 后重试。'
+    ];
+  }
+
+  async function runTrial(event) {
+    if (event) event.preventDefault();
+    if (trialSending) return;
+
+    var key = trialKey ? trialKey.value.trim() : '';
+    var paragraph = trialText ? trialText.value.trim() : '';
+    if (!key) {
+      updateTrialButton();
+      if (trialKey) trialKey.focus();
+      return;
+    }
+    if (!paragraph) {
+      setTrialHint('先填入一段论文方法文字');
+      if (trialText) trialText.focus();
+      return;
+    }
+
+    trialSending = true;
+    updateTrialButton();
+    if (trialSubmitLabel) trialSubmitLabel.textContent = '发送中…';
+    if (trialError) {
+      trialError.hidden = true;
+      trialError.replaceChildren();
+    }
+    if (trialCode) trialCode.hidden = true;
+    if (trialJson) trialJson.textContent = '';
+    if (trialEmpty) {
+      trialEmpty.hidden = false;
+      trialEmpty.textContent = '请求已发送，等待 DeepSeek 返回…';
+    }
+    if (trialMeta) trialMeta.textContent = '请求中';
+
+    var started = (window.performance && performance.now) ? performance.now() : Date.now();
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 60000);
+
+    try {
+      var response = await fetch(DEEPSEEK_ENDPOINT, {
+        method: 'POST',
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + key
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            {
+              role: 'user',
+              content: RULE_SUMMARY + '\n\nPAPER METHODS PARAGRAPH\n' + paragraph + '\n\n' + OUTPUT_CONTRACT
+            }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0,
+          max_tokens: 1400,
+          stream: false
+        }),
+        signal: controller.signal
+      });
+
+      var raw = await response.text();
+      var data = null;
+      try { data = JSON.parse(raw); } catch (parseError) {}
+
+      if (!response.ok) {
+        var apiMessage = data && data.error && data.error.message
+          ? data.error.message
+          : raw.slice(0, 240);
+        var mapped = httpErrorMessage(response.status, apiMessage);
+        showTrialError(mapped[0], mapped[1], mapped[2]);
+        if (trialMeta) trialMeta.textContent = 'HTTP ' + response.status;
+        return;
+      }
+
+      var content = data && data.choices && data.choices[0] && data.choices[0].message
+        ? data.choices[0].message.content
+        : '';
+      if (!content) {
+        showTrialError(
+          '响应里没有内容',
+          'DeepSeek 返回了 200，但没有 choices[0].message.content。',
+          '可能是响应结构变化；把原始响应保留给开发者排查。'
+        );
+        return;
+      }
+
+      var parsed = parseJsonContent(content);
+      if (trialEmpty) trialEmpty.hidden = true;
+      if (trialCode) trialCode.hidden = false;
+      if (trialJson) trialJson.textContent = parsed ? JSON.stringify(parsed, null, 2) : content;
+      if (!parsed) {
+        showTrialError(
+          '返回的不是合法 JSON',
+          '模型没有按 JSON 输出；下方保留了原始文本，便于检查。',
+          '可以再发一次，或降低段落的歧义。'
+        );
+      }
+
+      var elapsed = (((window.performance && performance.now) ? performance.now() : Date.now()) - started) / 1000;
+      var tokens = data && data.usage && data.usage.total_tokens ? data.usage.total_tokens : null;
+      if (trialMeta) {
+        trialMeta.textContent = 'HTTP 200 · ' + (data.model || 'deepseek-chat')
+          + (tokens ? ' · ' + Number(tokens).toLocaleString('en-US') + ' tokens' : '')
+          + ' · ' + elapsed.toFixed(1) + 's';
+      }
+      if (trialCode) trialCode.scrollIntoView({ block: 'nearest' });
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        showTrialError('请求超时（60s）', '没有在 60 秒内拿到响应。', '网络较慢或服务繁忙；稍后重试。');
+      } else if (err && err.name === 'TypeError') {
+        if (navigator.onLine === false) {
+          showTrialError('网络离线', '浏览器报告当前没有网络连接。', '恢复网络后再试。');
+        } else {
+          showTrialError(
+            '请求被浏览器拦下（可能是 CORS）',
+            '没有拿到可读的响应。常见原因：CORS 预检失败、网络不可达、代理或扩展拦截。',
+            'DeepSeek 端点通常允许跨域；换一个网络或关闭拦截扩展再试。若持续失败，请打开开发者工具的 Network 面板查看预检。'
+          );
+        }
+      } else {
+        showTrialError(
+          '请求未完成',
+          '浏览器抛出了未预期的错误：' + (err && err.name ? err.name : 'unknown') + '。',
+          '检查控制台；不要在这条信息里粘贴 key。'
+        );
+      }
+      if (trialEmpty) trialEmpty.hidden = true;
+    } finally {
+      clearTimeout(timer);
+      trialSending = false;
+      if (trialSubmitLabel) trialSubmitLabel.textContent = '发送单次提取';
+      updateTrialButton();
+    }
+  }
+
+  if (trialForm) trialForm.addEventListener('submit', runTrial);
+  if (trialKey) trialKey.addEventListener('input', updateTrialButton);
+  if (trialClear) {
+    trialClear.addEventListener('click', function () {
+      if (trialKey) trialKey.value = '';
+      resetTrialOutput();
+      updateTrialButton();
+      if (trialKey) trialKey.focus();
+    });
+  }
+  if (trialKey) updateTrialButton();
+
+  /* ---- current section in nav ---- */
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll('.site-nav a'));
+  var sections = navLinks.map(function (link) {
+    return document.querySelector(link.getAttribute('href'));
+  }).filter(Boolean);
+
+  if ('IntersectionObserver' in window && sections.length) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        navLinks.forEach(function (link) {
+          if (link.getAttribute('href') === '#' + entry.target.id) {
+            link.setAttribute('aria-current', 'location');
+          } else {
+            link.removeAttribute('aria-current');
+          }
+        });
+      });
+    }, { rootMargin: '-35% 0px -55% 0px', threshold: 0 });
+    sections.forEach(function (section) { observer.observe(section); });
+  }
+})();
+</script>
+</body>
+</html>
