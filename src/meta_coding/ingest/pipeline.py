@@ -249,7 +249,8 @@ def run_intake(root: Path, cfg: Config, *, run_id: str | None = None) -> IntakeR
             "pages": str(r["pages"]),
             "role": r["role"],
             "status": r["status"],
-            "first_seen": make_run_id(r["article_key"])[:15],
+            # 首次见到该文章时的批次；同一文章在后续批次沿用，不随时间漂移
+            "first_seen": batch,
         }
         for r in rows
         if r["role"] != "duplicate"

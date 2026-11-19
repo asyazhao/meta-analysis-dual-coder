@@ -38,13 +38,16 @@ def save_registry(path: Path, rows: Iterable[dict[str, str]]) -> int:
 
 
 def merge_rows(existing: list[dict[str, str]], new: list[dict[str, str]]) -> list[dict[str, str]]:
-    """Upsert by (article_key, batch_id); existing first-seen timestamps win."""
+    """Upsert by (article_key, batch_id); first_seen is never rewritten."""
     index = {(r["article_key"], r["batch_id"]): r for r in existing}
     for row in new:
         key = (row["article_key"], row["batch_id"])
         if key in index:
             merged = dict(index[key])
-            merged.update({k: v for k, v in row.items() if v not in ("", None)})
+            for field, value in row.items():
+                if field == "first_seen" or value in ("", None):
+                    continue
+                merged[field] = value
             index[key] = merged
         else:
             index[key] = row

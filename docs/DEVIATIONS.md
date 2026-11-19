@@ -40,6 +40,30 @@
 - **是否披露**：否（工程细节，不影响方法学）。
 - **状态**：生效中
 
+## DEV-005 阶段 manifest 只覆盖该阶段产物
+
+- **日期**：2026-11-19
+- **背景**：stage-00 首次冻结时把整个仓库树（45 个文件）写进 manifest。Stage 1 修改
+  `cli.py`/`artifacts.py` 后，`meta-coding verify` 报 stage-00 哈希不符——这不是篡改，
+  而是 manifest 语义错了：它把源码快照当成了阶段产物。
+- **决定**：
+  1. 阶段 manifest 只登记**该阶段的产物**（数据、报告、生成的配置），源码由 git tag 覆盖；
+  2. `scripts/freeze.py` 增加 `--path`，默认行为不变但阶段冻结必须显式传路径；
+  3. stage-00 的 manifest 按治理/配置文档重新冻结（docs/、configs/、README、LICENSE、
+     CITATION.cff、pyproject.toml、Makefile、.env.example、.gitignore、.github/、scripts/），
+     原全仓库快照移入 `artifacts/private/superseded/`。
+- **影响**：`verify` 从此只在"产物被改写"时报警，不再因后续阶段改代码而误报。
+- **状态**：生效中
+
+## DEV-006 registry 的 first_seen 必须确定性
+
+- **日期**：2026-11-19
+- **背景**：最初用运行时时间戳生成 `first_seen`，同一批次重跑会写出不同 registry.csv，
+  导致 manifest 每次重算都变，破坏"相同配置重跑可解释"这一硬约束。
+- **决定**：`first_seen` 记**首次见到该文章的批次号**（`batch01`），merge 时永不改写。
+- **影响**：`registry.csv` 对同一输入稳定；跨批次沿用首次批次号。
+- **状态**：生效中
+
 ## DEV-004 双随机种子强制不等
 
 - **日期**：2026-11-19
