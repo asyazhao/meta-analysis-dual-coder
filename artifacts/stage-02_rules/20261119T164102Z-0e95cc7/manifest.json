@@ -1,8 +1,8 @@
 {
   "stage": "stage-02_rules",
-  "run_id": "20261119T164027Z-d358520",
-  "created_at": "2026-11-19T16:40:27Z",
-  "git_commit": "d358520294c9017ecbf33e2673afdea72c2852be",
+  "run_id": "20261119T164102Z-0e95cc7",
+  "created_at": "2026-11-19T16:41:02Z",
+  "git_commit": "0e95cc7778a8a1a1cf55714c42363b9c396df9da",
   "rules_hash": null,
   "config_hash": null,
   "inputs": [],
@@ -17,12 +17,6 @@
       "path": "rules/CODING_PLAN.md",
       "sha256": "fa7c75005b97212efd38302faeb43bdfd5fdfde60c5175cef2e35c8bfc5921e4",
       "bytes": 53010,
-      "rows": null
-    },
-    {
-      "path": "rules/clean_codebook_BLANK.xlsx",
-      "sha256": "c6164d5eb1d456e5ef910d517154cdf1f80dc3aeb4904778439043f7ea913229",
-      "bytes": 8021,
       "rows": null
     },
     {
@@ -63,10 +57,10 @@
     }
   ],
   "counts": {
-    "files": 9,
-    "bytes": 92305
+    "files": 8,
+    "bytes": 84284
   },
   "checks": [],
   "status": "complete",
-  "notes": "模板生成固定 openpyxl 元数据，重跑 sha256 一致；28 字段/33 列/4 表；V01–V50；167 tests。"
+  "notes": "xlsx 字节不稳定，按 DEV-011 只哈希契约与规则文件；工作簿一致性由 V02 运行时校验。"
 }

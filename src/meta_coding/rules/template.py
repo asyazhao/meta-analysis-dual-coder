@@ -9,13 +9,13 @@ locked by ``rules/template_contract.json``.
 from __future__ import annotations
 
 import json
+import zipfile
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
-from datetime import datetime
-
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -150,6 +150,23 @@ def build_contract(layout: Layout) -> dict[str, Any]:
     }
 
 
+def _normalize_zip(path: Path) -> None:
+    """ZIP 成员的时间戳默认取当前时间，会让同一份内容的字节每次不同。
+
+    固定为 2026-01-01 后，`rules build` 重跑得到完全相同的 sha256，
+    manifest 才真正可校验。
+    """
+    tmp = path.with_suffix(".tmp")
+    with zipfile.ZipFile(path) as src, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as dst:
+        for item in src.infolist():
+            data = src.read(item.filename)
+            info = zipfile.ZipInfo(item.filename, date_time=(2026, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = item.external_attr
+            dst.writestr(info, data)
+    tmp.replace(path)
+
+
 def generate(rules_dir: Path) -> dict[str, Any]:
     fields_doc = yaml.safe_load((rules_dir / "fields.yaml").read_text(encoding="utf-8"))
     layout = build_layout(fields_doc)
@@ -157,6 +174,7 @@ def generate(rules_dir: Path) -> dict[str, Any]:
     wb = build_workbook(layout)
     out = rules_dir / "clean_codebook_BLANK.xlsx"
     wb.save(out)
+    _normalize_zip(out)
 
     contract = build_contract(layout)
     (rules_dir / "template_contract.json").write_text(
